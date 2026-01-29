@@ -5,6 +5,7 @@ import dotenv from 'dotenv';
 import { query } from './config/db.js'; // TypeScript ESM requires explicit extensions
 import cloudinary from './config/cloudinary.js';
 import { upload } from './middleware/multer.js';
+import productRoutes from './routes/productRoutes.js';
 
 dotenv.config();
 
@@ -12,6 +13,9 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true })); // Añade esta línea para formularios
+
+app.use('/api/products', productRoutes); // Aquí conectamos todo
 
 // Ruta de prueba
 app.get('/', (req: Request, res: Response) => {
