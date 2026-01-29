@@ -3,6 +3,8 @@ import type { Request, Response } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { query } from './config/db.js'; // TypeScript ESM requires explicit extensions
+import cloudinary from './config/cloudinary.js';
+import { upload } from './middleware/multer.js';
 
 dotenv.config();
 
@@ -53,6 +55,31 @@ app.get('/products', async (req: Request, res: Response) => {
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: 'Error al obtener productos' });
+  }
+});
+
+// RUTA DE PRUEBA PARA SUBIR IMÁGENES
+app.post('/api/upload', upload.single('image'), async (req: any, res: any) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: "No se envió ninguna imagen" });
+    }
+
+    // Proceso para enviar el Buffer de memoria a Cloudinary
+    const b64 = Buffer.from(req.file.buffer).toString("base64");
+    const dataURI = "data:" + req.file.mimetype + ";base64," + b64;
+
+    const result = await cloudinary.uploader.upload(dataURI, {
+      folder: "mi_vitrina_products",
+    });
+
+    res.json({
+      message: "Imagen subida!",
+      url: result.secure_url // Esta URL es la que guardaremos en Neon después
+    });
+  } catch (error) {
+    console.error("Error en Cloudinary:", error);
+    res.status(500).json({ error: "Error al subir la imagen" });
   }
 });
 
