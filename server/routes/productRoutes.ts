@@ -101,4 +101,94 @@ router.get('/:id', async (req: Request, res: Response): Promise<void> => {
   }
 });
 
+// RUTA PARA ELIMINAR UN PRODUCTO
+router.delete('/:id', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+
+    // 1. Primero obtenemos la URL de la imagen para saber qué borrar en Cloudinary
+    const productQuery = await query('SELECT image_url FROM products WHERE id = $1', [id]);
+    
+    if (productQuery.rows.length === 0) {
+      res.status(404).json({ error: "Producto no encontrado" });
+      return;
+    }
+
+    const imageUrl = productQuery.rows[0].image_url;
+
+    // 2. Extraer el public_id de la URL de Cloudinary
+    // Ejemplo: .../mi_vitrina_products/imagen.jpg -> mi_vitrina_products/imagen
+    const urlParts = imageUrl.split('/');
+    const fileNameWithExtension = urlParts[urlParts.length - 1];
+    const folderName = urlParts[urlParts.length - 2];
+    const publicId = `${folderName}/${fileNameWithExtension.split('.')[0]}`;
+
+    // 3. Borrar imagen en Cloudinary
+    await cloudinary.uploader.destroy(publicId);
+
+    // 4. Borrar registro en la base de datos (Neon)
+    await query('DELETE FROM products WHERE id = $1', [id]);
+
+    res.json({ message: "Producto e imagen eliminados correctamente" });
+
+  } catch (error) {
+    console.error("Error al eliminar producto:", error);
+    res.status(500).json({ error: "Error al eliminar el producto" });
+  }
+});
+
+// RUTA PARA ACTUALIZAR UN PRODUCTO
+router.put('/:id', upload.single('image'), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { title, description, price, category_id } = req.body;
+
+    // 1. Buscamos el producto actual para saber si tiene una imagen previa
+    const currentProduct = await query('SELECT image_url FROM products WHERE id = $1', [id]);
+    
+    if (currentProduct.rows.length === 0) {
+      res.status(404).json({ error: "Producto no encontrado" });
+      return;
+    }
+
+    let finalImageUrl = currentProduct.rows[0].image_url;
+
+    // 2. Si el usuario subió una NUEVA imagen...
+    if (req.file) {
+      // A. Borramos la imagen anterior de Cloudinary (opcional pero recomendado)
+      const oldUrl = currentProduct.rows[0].image_url;
+      const urlParts = oldUrl.split('/');
+      const publicId = `mi_vitrina_products/${urlParts[urlParts.length - 1].split('.')[0]}`;
+      await cloudinary.uploader.destroy(publicId);
+
+      // B. Subimos la nueva imagen
+      const b64 = Buffer.from(req.file.buffer).toString("base64");
+      const dataURI = `data:${req.file.mimetype};base64,${b64}`;
+      const cloudRes = await cloudinary.uploader.upload(dataURI, {
+        folder: "mi_vitrina_products",
+      });
+      finalImageUrl = cloudRes.secure_url;
+    }
+
+    // 3. Actualizamos en la base de datos
+    const sql = `
+      UPDATE products 
+      SET title = $1, description = $2, price = $3, image_url = $4, category_id = $5
+      WHERE id = $6
+      RETURNING *
+    `;
+    
+    const values = [title, description, price, finalImageUrl, category_id, id];
+    const result = await query(sql, values);
+
+    res.json({
+      message: "Producto actualizado con éxito",
+      product: result.rows[0]
+    });
+
+  } catch (error) {
+    console.error("Error al actualizar:", error);
+    res.status(500).json({ error: "Error al actualizar el producto" });
+  }
+});
 export default router;
