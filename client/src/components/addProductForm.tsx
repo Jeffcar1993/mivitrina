@@ -86,6 +86,20 @@ export function AddProductForm({ onProductAdded }: AddProductFormProps) {
           </div>
 
           <div className="space-y-2">
+            <Label>Categoría</Label>
+            <select 
+              name="category_id" 
+              className="w-full p-2 border rounded-md bg-white text-sm"
+              required
+            >
+              <option value="1">Electronica</option>
+              <option value="2">Ropa</option>
+              <option value="3">Hogar</option>
+              <option value="4">Otros</option>
+            </select>
+          </div>
+
+          <div className="space-y-2">
             <Label htmlFor="image">Foto del producto</Label>
             <Input 
               id="image" 

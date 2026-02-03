@@ -47,18 +47,17 @@ app.get('/categories', async (req: Request, res: Response) => {
 });
 
 // Obtener todos los productos (con el nombre de su categoría)
-app.get('/products', async (req: Request, res: Response) => {
+app.get('/api/products', async (req: Request, res: Response) => {
   try {
-    const text = `
+    const result = await query(`
       SELECT p.*, c.name as category_name 
       FROM products p 
       LEFT JOIN categories c ON p.category_id = c.id 
       ORDER BY p.created_at DESC
-    `;
-    const result = await query(text);
+    `);
     res.json(result.rows);
   } catch (err) {
-    res.status(500).json({ error: 'Error al obtener productos' });
+    res.status(500).json({ error: "Error al obtener productos" });
   }
 });
 
@@ -84,6 +83,22 @@ app.post('/api/upload', upload.single('image'), async (req: any, res: any) => {
   } catch (error) {
     console.error("Error en Cloudinary:", error);
     res.status(500).json({ error: "Error al subir la imagen" });
+  }
+});
+
+// server/index.ts (o tus rutas)
+
+app.delete('/api/products/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    // 1. Opcional: Podrías buscar el producto primero para borrar la imagen de Cloudinary
+    // Por ahora, borremos el registro de la DB:
+    await query('DELETE FROM products WHERE id = $1', [id]);
+    
+    res.json({ message: "Producto eliminado correctamente" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Error al eliminar el producto" });
   }
 });
 
