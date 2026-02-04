@@ -26,10 +26,18 @@ export default function ProductDetail() {
   const { addToCart } = useCart();
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   useEffect(() => {
     api.get(`/products/${id}`)
-      .then((res) => setProduct(res.data))
+      .then((res) => {
+        const data = res.data as Product;
+        setProduct(data);
+        const images = data.images && data.images.length > 0
+          ? [data.image_url, ...data.images]
+          : [data.image_url];
+        setSelectedImage(images[0]);
+      })
       .catch((err) => {
         console.error("Error al obtener el producto:", err);
       })
@@ -88,13 +96,31 @@ export default function ProductDetail() {
       <main className="container mx-auto px-4 py-4 md:py-8">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-start">
           
-          {/* Columna Izquierda: Imagen */}
-          <div className="group relative rounded-3xl overflow-hidden bg-slate-50 ring-1 ring-slate-100 shadow-2xl shadow-slate-200/50">
-            <img 
-              src={product.image_url} 
-              alt={product.title} 
-              className="w-full h-auto min-h-[400px] object-cover transition-transform duration-1000 group-hover:scale-105"
-            />
+          {/* Columna Izquierda: Imagen + Galería */}
+          <div className="space-y-4">
+            <div className="group relative rounded-3xl overflow-hidden bg-slate-50 ring-1 ring-slate-100 shadow-2xl shadow-slate-200/50">
+              <img 
+                src={selectedImage || product.image_url} 
+                alt={product.title} 
+                className="w-full h-auto min-h-[400px] object-cover transition-transform duration-1000 group-hover:scale-105"
+              />
+            </div>
+
+            {product.images && product.images.length > 0 && (
+              <div className="grid grid-cols-4 gap-3">
+                {[product.image_url, ...product.images].map((img, idx) => (
+                  <button
+                    key={`${img}-${idx}`}
+                    onClick={() => setSelectedImage(img)}
+                    className={`aspect-square rounded-xl overflow-hidden ring-2 transition-all ${
+                      img === selectedImage ? "ring-blue-500" : "ring-slate-100 hover:ring-blue-200"
+                    }`}
+                  >
+                    <img src={img} alt={`${product.title} ${idx + 1}`} className="h-full w-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Columna Derecha: Información */}
@@ -120,6 +146,31 @@ export default function ProductDetail() {
                 {product.description}
               </p>
             </div>
+
+            {product.seller_username && (
+              <div className="rounded-2xl border border-slate-100 bg-slate-50 p-6">
+                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Vendedor</h3>
+                <div className="flex items-center gap-4">
+                  {product.seller_profile_image ? (
+                    <img
+                      src={product.seller_profile_image}
+                      alt={product.seller_username}
+                      className="h-12 w-12 rounded-full object-cover ring-2 ring-white"
+                    />
+                  ) : (
+                    <div className="h-12 w-12 rounded-full bg-blue-600 flex items-center justify-center">
+                      <span className="text-lg font-bold text-white">
+                        {product.seller_username.charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                  )}
+                  <div>
+                    <p className="text-lg font-bold text-slate-800">{product.seller_username}</p>
+                    <p className="text-sm text-slate-500">Vendedor verificado</p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Acciones */}
             <div className="space-y-4 pt-2">
@@ -154,9 +205,14 @@ export default function ProductDetail() {
         </div>
       </main>
       
-      {/* Footer Simple */}
-      <footer className="mt-20 border-t border-slate-100 py-10 text-center">
-        <p className="text-slate-400 text-sm italic">MIVITRINA - Tu catálogo digital 2026</p>
+      {/* Footer */}
+      <footer className="mt-20 border-t border-slate-200 bg-white py-10">
+        <div className="container mx-auto px-4">
+          <div className="flex flex-col items-center justify-between gap-2 text-xs text-slate-400 md:flex-row">
+            <p>© 2026 MiVitrina. Todos los derechos reservados.</p>
+            <p>Tu catálogo digital con estilo.</p>
+          </div>
+        </div>
       </footer>
     </div>
   );

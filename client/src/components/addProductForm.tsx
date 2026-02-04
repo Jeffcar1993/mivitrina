@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import api from "@/lib/axios";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,18 +20,60 @@ interface AddProductFormProps {
 export function AddProductForm({ onProductAdded }: AddProductFormProps) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [categories, setCategories] = useState<{ id: number; name: string }[]>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
+  const [categoriesError, setCategoriesError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    const loadCategories = async () => {
+      try {
+        setCategoriesLoading(true);
+        setCategoriesError(null);
+        const response = await api.get("/categories");
+        if (isMounted) {
+          setCategories(response.data || []);
+        }
+      } catch (error) {
+        console.error("Error al cargar categorías:", error);
+        if (isMounted) {
+          setCategoriesError("No se pudieron cargar las categorías");
+          setCategories([]);
+        }
+      } finally {
+        if (isMounted) {
+          setCategoriesLoading(false);
+        }
+      }
+    };
+
+    loadCategories();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
 
+    const imagesInput = e.currentTarget.elements.namedItem("images") as HTMLInputElement | null;
+    const imageFiles = imagesInput?.files;
+    if (!imageFiles || imageFiles.length === 0) {
+      alert("Debes subir al menos 1 imagen.");
+      setLoading(false);
+      return;
+    }
+    if (imageFiles.length > 4) {
+      alert("Puedes subir máximo 4 imágenes.");
+      setLoading(false);
+      return;
+    }
+
     const formData = new FormData(e.currentTarget);
     
-    // IMPORTANTE: Como aún no tenemos selector de categorías,
-    // enviamos el ID 1 por defecto (asegúrate de tener una categoría en tu DB)
-    if (!formData.get("category_id")) {
-      formData.append("category_id", "1");
-    }
+    // El selector es obligatorio; no forzamos categoría por defecto
 
     try {
       // Enviamos el FormData directamente (Axios detecta que lleva un archivo)
@@ -54,7 +96,7 @@ export function AddProductForm({ onProductAdded }: AddProductFormProps) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="bg-slate-900 text-white hover:bg-slate-800">
+        <Button className="h-10 bg-slate-900 text-white hover:bg-slate-800">
           <PlusCircle className="mr-2 h-4 w-4" /> Nuevo Producto
         </Button>
       </DialogTrigger>
@@ -89,29 +131,48 @@ export function AddProductForm({ onProductAdded }: AddProductFormProps) {
             <Label>Categoría</Label>
             <select 
               name="category_id" 
+              defaultValue=""
               className="w-full p-2 border rounded-md bg-white text-sm"
               required
+              disabled={categoriesLoading || !!categoriesError}
             >
-              <option value="1">Electronica</option>
-              <option value="2">Ropa</option>
-              <option value="3">Hogar</option>
-              <option value="4">Otros</option>
+              <option value="" disabled>
+                {categoriesLoading
+                  ? "Cargando categorías..."
+                  : categoriesError
+                  ? "No se pudieron cargar"
+                  : "Selecciona una categoría"}
+              </option>
+              {categories.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
+                </option>
+              ))}
             </select>
+            {categoriesError ? (
+              <p className="text-xs text-red-600">{categoriesError}</p>
+            ) : null}
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="image">Foto del producto</Label>
+            <Label htmlFor="images">Fotos del producto (1 a 4)</Label>
             <Input 
-              id="image" 
-              name="image" 
+              id="images" 
+              name="images" 
               type="file" 
               accept="image/*" 
               className="cursor-pointer" 
+              multiple
               required 
             />
+            <p className="text-xs text-slate-500">La primera imagen será la principal.</p>
           </div>
 
-          <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white" disabled={loading}>
+          <Button
+            type="submit"
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+            disabled={loading || categoriesLoading || !!categoriesError || categories.length === 0}
+          >
             {loading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
