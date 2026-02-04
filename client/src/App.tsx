@@ -8,9 +8,10 @@ import { useCart } from "./context/cartContext";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "./components/ui/card";
 import { Button } from "./components/ui/button";
 import { Badge } from "./components/ui/badge";
+import { Input } from "./components/ui/input";
 
 // Iconos y Componente personalizado
-import { ShoppingCart, Eye, Sparkles, Trash2, LogOut, User } from "lucide-react";
+import { ShoppingCart, Eye, Sparkles, Trash2, LogOut, User, Plus, Search } from "lucide-react";
 import { AddProductForm } from "./components/addProductForm";
 import { CartSheet } from './components/cartSheet';
 
@@ -18,12 +19,21 @@ export default function App() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [selectedCategory, setSelectedCategory] = useState<string>("Todos");
+  const [searchQuery, setSearchQuery] = useState<string>("");
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
 
-  const filteredProducts = selectedCategory === "Todos" 
-  ? products 
-  : products.filter(p => p.category_name?.toLowerCase() === selectedCategory.toLowerCase());
+  const filteredProducts = products.filter((product) => {
+    const matchesCategory =
+      selectedCategory === "Todos" ||
+      product.category_name?.toLowerCase() === selectedCategory.toLowerCase();
+    const query = searchQuery.trim().toLowerCase();
+    const matchesSearch =
+      !query ||
+      product.title.toLowerCase().includes(query) ||
+      product.description.toLowerCase().includes(query);
+    return matchesCategory && matchesSearch;
+  });
   
   // Extraemos datos y funciones del Carrito
   const { addToCart } = useCart();
@@ -76,8 +86,8 @@ export default function App() {
     return (
       <div className="flex h-screen w-full flex-col items-center justify-center bg-white">
         <div className="relative flex items-center justify-center">
-          <div className="h-16 w-16 animate-spin rounded-full border-4 border-slate-200 border-t-blue-600"></div>
-          <Sparkles className="absolute h-6 w-6 text-blue-600" />
+          <div className="h-16 w-16 animate-spin rounded-full border-4 border-slate-200 border-t-[#C05673]"></div>
+          <Sparkles className="absolute h-6 w-6 text-[#C05673]" />
         </div>
         <p className="mt-4 animate-pulse text-sm font-medium text-slate-500">Preparando tu escaparate...</p>
       </div>
@@ -85,12 +95,12 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f8fafc]">
+    <div className="min-h-screen bg-[#FBFBFB]">
       {/* Header con efecto Blur */}
-      <header className="sticky top-0 z-50 w-full border-b border-slate-200 bg-white/70 backdrop-blur-xl">
+      <header className="sticky top-0 z-50 w-full border-b border-slate-200 bg-white/80 backdrop-blur-xl">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <div className="flex items-center gap-2">
-            <div className="rounded-lg bg-blue-600 p-1.5">
+            <div className="rounded-lg bg-[#C05673] p-1.5">
               <Sparkles className="h-6 w-6 text-white" />
             </div>
             <h1 className="text-xl font-black tracking-tighter text-slate-900 leading-none">
@@ -101,10 +111,10 @@ export default function App() {
           <div className="flex items-center gap-2">
             {!isAuthenticated ? (
               <>
-                <Link to="/login" className="h-10 flex items-center bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:-translate-y-1">Login</Link>
-                <Link to="/register" className="h-10 flex items-center bg-transparent hover:bg-blue-50 text-blue-600 font-semibold px-6 border border-blue-600 rounded-lg transition duration-300 ease-in-out">Register</Link>
+                <Link to="/login" className="h-10 flex items-center bg-[#C05673] hover:bg-[#B04B68] text-white font-semibold px-6 rounded-lg shadow-sm transition duration-300 ease-in-out">Login</Link>
+                <Link to="/register" className="h-10 flex items-center bg-transparent hover:bg-[#FDF6F8] text-[#9B5F71] font-semibold px-6 border border-[#EACED7] rounded-lg transition duration-300 ease-in-out">Register</Link>
                 <div className="h-6 w-[1px] bg-slate-200 mx-1" />
-                <Button asChild className="h-10 rounded-lg bg-blue-600 px-6 font-semibold text-white shadow-md transition duration-300 ease-in-out hover:-translate-y-0.5 hover:bg-blue-700">
+                <Button asChild className="h-10 rounded-lg bg-[#C05673] px-6 font-semibold text-white shadow-sm transition duration-300 ease-in-out hover:bg-[#B04B68]">
                   <Link to="/login">Publicar producto</Link>
                 </Button>
                 <CartSheet />
@@ -136,40 +146,80 @@ export default function App() {
       <main>
         {/* Hero Section Atractiva */}
         <section className="relative overflow-hidden bg-white py-16 sm:py-24">
-          <div className="absolute inset-0 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:20px_20px] [mask-image:radial-gradient(ellipse_50%_50%_at_50%_50%,#000_70%,transparent_100%)]" />
-          <div className="container relative mx-auto px-4 text-center">
-            <Badge variant="secondary" className="mb-4 rounded-full px-4 py-1 text-blue-700 bg-blue-50 border-blue-100">
-              Lo que buscas en un solo lugar
-            </Badge>
-            <h2 className="text-4xl font-black tracking-tight text-slate-900 sm:text-6xl">
-              Tus productos favoritos en <span className="text-blue-600">un solo lugar.</span>
-            </h2>
-            <p className="mx-auto mt-6 max-w-2xl text-lg text-slate-600">
-             Todos los dias encuentras productos que quieres comprar o vender. Hazlo fácil con MiVitrina.
-            </p>
+          <div className="absolute inset-0 bg-[radial-gradient(#f1f5f9_1px,transparent_1px)] [background-size:20px_20px] [mask-image:radial-gradient(ellipse_50%_50%_at_50%_50%,#000_70%,transparent_100%)]" />
+          <div className="container relative mx-auto grid items-center gap-10 px-4 text-center lg:grid-cols-2 lg:text-left">
+            <div>
+              <Badge variant="secondary" className="mb-4 rounded-full px-4 py-1 text-[#9B5F71] bg-[#FDF6F8] border-[#EAD1D9]">
+                Confianza para comprar, impulso para vender
+              </Badge>
+              <h2 className="text-4xl font-black tracking-tight text-slate-900 sm:text-6xl">
+                Tu vitrina moderna para <span className="text-[#C05673]">comprar</span> y <span className="text-slate-900">vender</span>.
+              </h2>
+              <p className="mt-6 max-w-2xl text-lg text-slate-600">
+                Descubre piezas únicas o publica tu catálogo en minutos. Experiencia segura, rápida y con estilo boutique.
+              </p>
+              <div className="mt-8 flex flex-wrap items-center justify-center gap-3 lg:justify-start">
+                <Button asChild className="h-11 rounded-full bg-[#C05673] px-8 text-white hover:bg-[#B04B68]">
+                  <Link to={isAuthenticated ? "/" : "/login"}>Quiero vender</Link>
+                </Button>
+                <Button asChild variant="outline" className="h-11 rounded-full border-slate-200 px-8 text-slate-900 hover:bg-slate-50">
+                  <Link to="#productos">Explorar productos</Link>
+                </Button>
+              </div>
+            </div>
+            <div className="relative mx-auto w-full max-w-md">
+              <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                <p className="text-sm font-semibold text-slate-700">Tendencias hoy</p>
+                <div className="mt-4 space-y-3">
+                  {["Ropa con estilo", "Accesorios premium", "Tecnología práctica"].map((item) => (
+                    <div key={item} className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
+                      <span className="text-sm text-slate-700">{item}</span>
+                      <span className="text-xs font-semibold text-[#9B5F71]">Ver más</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
         </section>
 
-        <div className="container mx-auto px-4 py-12">
+        <div id="productos" className="container mx-auto px-4 py-12">
           {/* Barra de utilidades */}
           <div className="mb-8 flex flex-col items-center justify-between gap-4 border-b border-slate-100 pb-8 sm:flex-row">
-            <h3 className="text-xl font-bold text-slate-800">Todos los productos</h3>
-            <div className="mb-8 flex flex-wrap gap-2">
-              {["Todos", "Ropa", "Calzado", "electronica", "hogar","Accesorios"].map((cat) => (
-                <Button
-                  key={cat}
-                  variant={selectedCategory === cat ? "default" : "outline"}
-                  onClick={() => setSelectedCategory(cat)}
-                  className={`rounded-full px-6 transition-all ${
-                    selectedCategory === cat 
-                    ? "bg-blue-600 text-white hover:bg-blue-700" 
-                    : "text-slate-600 hover:border-blue-300 hover:text-blue-600"
-                  }`}
-                >
-                  {cat}
-                </Button>
-              ))}
+            <div>
+              <h3 className="text-xl font-bold text-slate-800">Todos los productos</h3>
+              <p className="text-sm text-slate-500">Curado para ti, actualizado cada día.</p>
             </div>
+            <div className="relative w-full max-w-md">
+              <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Input
+                placeholder="Busca productos, marcas o estilos"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="h-11 rounded-full bg-slate-100 pl-11 text-sm shadow-none ring-1 ring-transparent focus-visible:ring-[#EAD1D9]"
+              />
+            </div>
+          </div>
+
+          <div className="mb-10 flex flex-wrap items-center gap-6 overflow-x-auto pb-2 text-sm font-semibold text-slate-600">
+            {["Todos", "Ropa", "Calzado", "electronica", "hogar", "Accesorios"].map((cat) => (
+              <button
+                key={cat}
+                onClick={() => setSelectedCategory(cat)}
+                className={`relative pb-2 transition-colors ${
+                  selectedCategory === cat
+                    ? "text-slate-900"
+                    : "text-slate-500 hover:text-slate-800"
+                }`}
+              >
+                {cat}
+                <span
+                  className={`absolute left-0 right-0 -bottom-0.5 h-[2px] rounded-full transition-all ${
+                    selectedCategory === cat ? "bg-[#C05673]" : "bg-transparent"
+                  }`}
+                />
+              </button>
+            ))}
           </div>
 
           {/* Grid de Productos */}
@@ -184,23 +234,23 @@ export default function App() {
                 {isAuthenticated ? (
                   <AddProductForm onProductAdded={fetchProducts} />
                 ) : (
-                  <Button asChild className="h-10 rounded-lg bg-blue-600 px-6 font-semibold text-white shadow-md transition duration-300 ease-in-out hover:-translate-y-0.5 hover:bg-blue-700">
+                  <Button asChild className="h-10 rounded-full bg-[#C05673] px-6 font-semibold text-white shadow-sm transition duration-300 ease-in-out hover:bg-[#B04B68]">
                     <Link to="/login">Inicia sesión para vender</Link>
                   </Button>
                 )}
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {filteredProducts.map((product) => (
-                <Card key={product.id} className="group relative flex flex-col overflow-hidden border-none bg-white shadow-sm ring-1 ring-slate-200 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:ring-blue-100">
+                <Card key={product.id} className="group relative flex flex-col overflow-hidden border border-slate-200 bg-white transition-all duration-300 hover:-translate-y-1 hover:border-slate-300">
                   
                   {/* Imagen con Link al Detalle */}
                   <Link to={`/product/${product.id}`} className="relative aspect-[4/5] overflow-hidden bg-slate-100 block">
                     <img
                       src={product.image_url}
                       alt={product.title}
-                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                     />
                     <div className="absolute inset-0 bg-black/5 opacity-0 transition-opacity group-hover:opacity-100" />
                     <Badge className="absolute left-3 top-3 bg-white/90 text-slate-900 backdrop-blur shadow-sm hover:bg-white">
@@ -210,11 +260,11 @@ export default function App() {
 
                   <CardHeader className="p-5 pb-2"> 
                     <Link to={`/product/${product.id}`}>
-                      <CardTitle className="hover:text-blue-600 transition-colors cursor-pointer text-lg font-bold capitalize text-slate-800">
+                      <CardTitle className="hover:text-[#C05673] transition-colors cursor-pointer text-lg font-semibold capitalize text-slate-800">
                         {product.title}
                       </CardTitle>
                     </Link>
-                    <p className="mt-1 text-2xl font-black text-slate-900">
+                    <p className="mt-1 text-xl font-semibold text-slate-900">
                       ${Number(product.price).toLocaleString()}
                     </p>
                   </CardHeader>
@@ -225,13 +275,14 @@ export default function App() {
                     </p>
                   </CardContent>
 
-                  <CardFooter className="mt-auto flex gap-2 p-5 pt-4">
-                    {/* Botón Añadir Principal */}
-                    <Button 
+                  <CardFooter className="mt-auto flex items-center gap-2 p-5 pt-4">
+                    <Button
                       onClick={() => addToCart(product)}
-                      className="w-full bg-blue-600 font-bold text-white shadow-md shadow-blue-100 hover:bg-blue-700 hover:shadow-lg transition-all"
+                      size="icon"
+                      className="rounded-full bg-[#C05673] text-white shadow-sm transition-all hover:bg-[#B04B68] sm:opacity-0 sm:group-hover:opacity-100"
+                      title="Añadir al carrito"
                     >
-                      Añadir
+                      <Plus className="h-4 w-4" />
                     </Button>
                     
                     {/* Botón Borrar - solo para el creador */}
@@ -239,7 +290,7 @@ export default function App() {
                       <Button 
                         variant="outline" 
                         size="icon" 
-                        className="shrink-0 border-slate-200 hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors"
+                        className="shrink-0 border-slate-200 hover:bg-[#FDF6F8] hover:text-[#9B5F71] hover:border-[#EACED7] transition-colors"
                         onClick={() => handleDelete(product.id)}
                       >
                         <Trash2 className="h-4 w-4" />
@@ -247,8 +298,8 @@ export default function App() {
                     )}
 
                     {/* Botón Ver Detalle */}
-                    <Link to={`/product/${product.id}`}>
-                      <Button variant="outline" size="icon" className="shrink-0 rounded-lg border-slate-200 hover:bg-slate-50 hover:text-blue-600">
+                    <Link to={`/product/${product.id}`} className="ml-auto">
+                      <Button variant="outline" size="icon" className="shrink-0 rounded-full border-slate-200 hover:bg-slate-50 hover:text-[#9B5F71]">
                         <Eye className="h-4 w-4" />
                       </Button>
                     </Link>
@@ -265,7 +316,7 @@ export default function App() {
           <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
             <div className="space-y-3">
               <div className="flex items-center gap-2">
-                <div className="rounded-lg bg-blue-600 p-1.5">
+                <div className="rounded-lg bg-[#C05673] p-1.5">
                   <Sparkles className="h-4 w-4 text-white" />
                 </div>
                 <span className="text-sm font-black tracking-tight text-slate-900">MIVITRINA</span>
@@ -278,9 +329,9 @@ export default function App() {
             <div className="space-y-2 text-sm">
               <p className="font-semibold text-slate-800">Explora</p>
               <div className="flex flex-col gap-1 text-slate-500">
-                <Link to="/" className="hover:text-blue-600">Inicio</Link>
-                <Link to="/login" className="hover:text-blue-600">Ingresar</Link>
-                <Link to="/register" className="hover:text-blue-600">Crear cuenta</Link>
+                <Link to="/" className="hover:text-[#9B5F71]">Inicio</Link>
+                <Link to="/login" className="hover:text-[#9B5F71]">Ingresar</Link>
+                <Link to="/register" className="hover:text-[#9B5F71]">Crear cuenta</Link>
               </div>
             </div>
 

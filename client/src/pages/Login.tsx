@@ -32,11 +32,11 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50">
+    <div className="min-h-screen flex flex-col bg-[#FBFBFB]">
       <header className="sticky top-0 z-10 w-full border-b border-slate-200 bg-white/80 backdrop-blur">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-            <div className="rounded-lg bg-blue-600 p-1.5">
+            <div className="rounded-lg bg-[#C05673] p-1.5">
               <Sparkles className="h-5 w-5 text-white" />
             </div>
             <span className="text-lg font-black tracking-tight text-slate-900">MIVITRINA</span>
@@ -45,7 +45,7 @@ export default function Login() {
             <Button asChild variant="ghost" className="font-semibold">
               <Link to="/register">Register</Link>
             </Button>
-            <Button asChild variant="outline" className="font-semibold">
+            <Button asChild variant="outline" className="font-semibold border-[#EACED7] text-[#9B5F71] hover:bg-[#FDF6F8]">
               <Link to="/">Inicio</Link>
             </Button>
           </div>
@@ -53,9 +53,9 @@ export default function Login() {
       </header>
 
       <div className="flex-1 flex items-center justify-center px-4">
-        <div className="w-full max-w-md bg-white rounded-3xl shadow-xl shadow-slate-200/50 p-8 border border-slate-100">
+        <div className="w-full max-w-md bg-white rounded-3xl shadow-sm p-8 border border-slate-200">
           <div className="text-center mb-10">
-            <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-blue-600 text-white mb-4">
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[#C05673] text-white mb-4">
               <span className="font-black text-xl italic">V</span>
             </div>
             <h2 className="text-3xl font-black text-slate-900">Bienvenido</h2>
@@ -84,14 +84,14 @@ export default function Login() {
               />
             </div>
 
-            <Button type="submit" className="w-full bg-slate-900 hover:bg-slate-800 text-white h-12 text-lg font-bold" disabled={loading}>
+            <Button type="submit" className="w-full bg-[#C05673] hover:bg-[#B04B68] text-white h-12 text-lg font-bold" disabled={loading}>
               {loading ? "Cargando..." : "Entrar"}
             </Button>
           </form>
 
           <p className="mt-8 text-center text-slate-600">
             ¿Aún no vendes en MiVitrina?{' '}
-            <Link to="/register" className="text-blue-600 font-bold hover:underline">
+            <Link to="/register" className="text-[#9B5F71] font-bold hover:underline">
               Crea tu cuenta
             </Link>
           </p>

@@ -19,7 +19,7 @@ export function CartSheet() {
         <Button variant="ghost" size="icon" className="relative hover:bg-slate-100 rounded-full">
           <ShoppingCart className="h-5 w-5 text-slate-700" />
           {cart.length > 0 && (
-            <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-blue-600 text-[10px] font-bold text-white animate-in zoom-in">
+            <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-[#C05673] text-[10px] font-bold text-white animate-in zoom-in">
               {cart.length}
             </span>
           )}
@@ -28,7 +28,7 @@ export function CartSheet() {
       <SheetContent className="w-full sm:max-w-md flex flex-col bg-white">
         <SheetHeader className="border-b pb-4">
           <SheetTitle className="flex items-center gap-2 text-2xl font-black">
-            <ShoppingBag className="text-blue-600" /> Tu Carrito
+            <ShoppingBag className="text-[#C05673]" /> Tu Carrito
           </SheetTitle>
         </SheetHeader>
 
@@ -42,7 +42,7 @@ export function CartSheet() {
             <div className="flex-1 overflow-y-auto pr-4 py-4">
               <div className="space-y-4">
                 {cart.map((item, index) => (
-                  <div key={`${item.id}-${index}`} className="flex items-center gap-4 bg-slate-50 p-3 rounded-xl ring-1 ring-slate-100">
+                  <div key={`${item.id}-${index}`} className="flex items-center gap-4 bg-white p-3 rounded-xl ring-1 ring-slate-200">
                     <img 
                       src={item.image_url} 
                       alt={item.title} 
@@ -50,13 +50,13 @@ export function CartSheet() {
                     />
                     <div className="flex-1 min-w-0">
                       <h4 className="text-sm font-bold text-slate-900 truncate capitalize">{item.title}</h4>
-                      <p className="text-blue-600 font-bold text-sm">${Number(item.price).toLocaleString()}</p>
+                      <p className="text-slate-900 font-semibold text-sm">${Number(item.price).toLocaleString()}</p>
                     </div>
                     <Button 
                       variant="ghost" 
                       size="icon" 
                       onClick={() => removeFromCart(index)}
-                      className="text-slate-400 hover:text-red-600 hover:bg-red-50"
+                      className="text-slate-400 hover:text-[#9B5F71] hover:bg-[#FDF6F8]"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -71,7 +71,7 @@ export function CartSheet() {
                 <span className="font-black text-slate-900 text-2xl">${total.toLocaleString()}</span>
               </div>
               <SheetFooter>
-                <Button className="w-full bg-blue-600 hover:bg-blue-700 h-12 text-lg font-bold shadow-lg shadow-blue-100">
+                <Button className="w-full bg-[#C05673] hover:bg-[#B04B68] h-12 text-lg font-bold shadow-sm">
                   Finalizar Compra
                 </Button>
               </SheetFooter>

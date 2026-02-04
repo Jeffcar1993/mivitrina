@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,9 +12,11 @@ import type { User } from '../types';
 
 export default function Profile() {
   const navigate = useNavigate();
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [editing, setEditing] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [imageUploading, setImageUploading] = useState(false);
   const [formData, setFormData] = useState({
     username: '',
     email: '',
@@ -41,6 +43,29 @@ export default function Profile() {
     });
   }, [navigate]);
 
+  const handleImageUpload = async (file: File) => {
+    setImageUploading(true);
+    try {
+      const form = new FormData();
+      form.append('image', file);
+
+      const res = await api.post('/upload', form);
+      const imageUrl = res.data?.url as string | undefined;
+
+      if (!imageUrl) {
+        toast.error("No se pudo obtener la URL de la imagen");
+        return;
+      }
+
+      setFormData((prev) => ({ ...prev, profile_image: imageUrl }));
+      toast.success("Imagen subida correctamente");
+    } catch {
+      toast.error("Error al subir la imagen");
+    } finally {
+      setImageUploading(false);
+    }
+  };
+
   const handleSave = async () => {
     setLoading(true);
     try {
@@ -61,23 +86,23 @@ export default function Profile() {
   if (!user) {
     return (
       <div className="flex h-screen items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-slate-200 border-t-blue-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-slate-200 border-t-[#C05673]"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-[#FBFBFB]">
       {/* Header */}
       <header className="sticky top-0 z-10 w-full border-b border-slate-200 bg-white/80 backdrop-blur">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-            <div className="rounded-lg bg-blue-600 p-1.5">
+            <div className="rounded-lg bg-[#C05673] p-1.5">
               <Sparkles className="h-5 w-5 text-white" />
             </div>
             <span className="text-lg font-black tracking-tight text-slate-900">MIVITRINA</span>
           </Link>
-          <Button asChild variant="ghost">
+          <Button asChild variant="ghost" className="text-slate-600 hover:text-[#9B5F71] hover:bg-[#FDF6F8]">
             <Link to="/">
               <ArrowLeft className="mr-2 h-4 w-4" />
               Volver al inicio
@@ -93,12 +118,12 @@ export default function Profile() {
           <p className="text-slate-600 mt-2">Administra tu información como vendedor</p>
         </div>
 
-        <Card className="shadow-lg border-slate-200">
-          <CardHeader className="bg-gradient-to-r from-blue-50 to-white border-b">
+        <Card className="shadow-sm border-slate-200 bg-white">
+          <CardHeader className="bg-gradient-to-r from-[#FDF6F8] to-white border-b">
             <CardTitle className="text-2xl font-bold flex items-center justify-between">
               <span>Información del vendedor</span>
               {!editing && (
-                <Button onClick={() => setEditing(true)} variant="outline">
+                <Button onClick={() => setEditing(true)} variant="outline" className="border-[#EACED7] text-[#C05673] hover:bg-[#FDF6F8]">
                   Editar perfil
                 </Button>
               )}
@@ -109,7 +134,7 @@ export default function Profile() {
             {/* Profile Image */}
             <div className="flex flex-col items-center gap-4">
               <div className="relative">
-                <div className="h-32 w-32 rounded-full bg-slate-200 flex items-center justify-center overflow-hidden ring-4 ring-blue-100">
+                <div className="h-32 w-32 rounded-full bg-slate-200 flex items-center justify-center overflow-hidden ring-4 ring-[#F2DCE3]">
                   {formData.profile_image ? (
                     <img src={formData.profile_image} alt="Profile" className="h-full w-full object-cover" />
                   ) : (
@@ -121,19 +146,37 @@ export default function Profile() {
                 {editing && (
                   <Button 
                     size="icon" 
-                    className="absolute bottom-0 right-0 rounded-full h-10 w-10 bg-blue-600 hover:bg-blue-700"
+                    className="absolute bottom-0 right-0 rounded-full h-10 w-10 bg-[#C05673] hover:bg-[#B04B68]"
                     title="Cambiar imagen"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={imageUploading}
                   >
                     <Camera className="h-4 w-4" />
                   </Button>
                 )}
               </div>
               {editing && (
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      handleImageUpload(file);
+                    }
+                    e.currentTarget.value = '';
+                  }}
+                />
+              )}
+              {editing && (
                 <Input 
                   placeholder="URL de la imagen de perfil"
                   value={formData.profile_image}
                   onChange={(e) => setFormData({...formData, profile_image: e.target.value})}
                   className="max-w-md"
+                  disabled={imageUploading}
                 />
               )}
             </div>
@@ -195,8 +238,8 @@ export default function Profile() {
               <div className="flex gap-3 pt-4 border-t">
                 <Button 
                   onClick={handleSave}
-                  className="flex-1 bg-blue-600 hover:bg-blue-700"
-                  disabled={loading}
+                  className="flex-1 bg-[#C05673] hover:bg-[#B04B68]"
+                  disabled={loading || imageUploading}
                 >
                   <Save className="mr-2 h-4 w-4" />
                   {loading ? "Guardando..." : "Guardar cambios"}
@@ -213,7 +256,8 @@ export default function Profile() {
                     });
                   }}
                   variant="outline"
-                  disabled={loading}
+                  className="border-[#EACED7] text-[#9B5F71] hover:bg-[#FDF6F8]"
+                  disabled={loading || imageUploading}
                 >
                   Cancelar
                 </Button>

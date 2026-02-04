@@ -96,7 +96,7 @@ export function AddProductForm({ onProductAdded }: AddProductFormProps) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="h-10 bg-slate-900 text-white hover:bg-slate-800">
+        <Button className="h-10 bg-[#C05673] text-white hover:bg-[#B04B68]">
           <PlusCircle className="mr-2 h-4 w-4" /> Nuevo Producto
         </Button>
       </DialogTrigger>
@@ -132,7 +132,7 @@ export function AddProductForm({ onProductAdded }: AddProductFormProps) {
             <select 
               name="category_id" 
               defaultValue=""
-              className="w-full p-2 border rounded-md bg-white text-sm"
+              className="w-full rounded-full border border-slate-200 bg-white px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#EAD1D9]"
               required
               disabled={categoriesLoading || !!categoriesError}
             >
@@ -170,7 +170,7 @@ export function AddProductForm({ onProductAdded }: AddProductFormProps) {
 
           <Button
             type="submit"
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+            className="w-full bg-[#C05673] hover:bg-[#B04B68] text-white"
             disabled={loading || categoriesLoading || !!categoriesError || categories.length === 0}
           >
             {loading ? (

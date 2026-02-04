@@ -46,7 +46,7 @@ export default function ProductDetail() {
 
   if (loading) return (
     <div className="flex h-screen w-full flex-col items-center justify-center bg-white">
-      <Loader2 className="animate-spin h-12 w-12 text-blue-600 mb-4" />
+      <Loader2 className="animate-spin h-12 w-12 text-[#C05673] mb-4" />
       <p className="text-slate-500 font-medium animate-pulse">Cargando detalles...</p>
     </div>
   );
@@ -55,19 +55,19 @@ export default function ProductDetail() {
     <div className="flex flex-col h-screen items-center justify-center space-y-4">
       <h2 className="text-2xl font-bold text-slate-800">¡Ups! Producto no encontrado</h2>
       <p className="text-slate-500">Es posible que el producto haya sido eliminado o el ID sea incorrecto.</p>
-      <Button onClick={() => navigate("/")} className="bg-blue-600">
+      <Button onClick={() => navigate("/")} className="bg-[#C05673] hover:bg-[#B04B68]">
         Volver al catálogo principal
       </Button>
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-[#FBFBFB]">
       {/* Header Reutilizado */}
       <header className="sticky top-0 z-50 w-full border-b border-slate-200 bg-white/70 backdrop-blur-xl">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <Link to="/" className="flex items-center gap-2 group">
-            <div className="rounded-lg bg-blue-600 p-1.5 transition-transform group-hover:scale-110">
+            <div className="rounded-lg bg-[#C05673] p-1.5 transition-transform group-hover:scale-110">
               <Sparkles className="h-5 w-5 text-white" />
             </div>
             <h1 className="text-xl font-black tracking-tighter text-slate-900 leading-none">
@@ -86,7 +86,7 @@ export default function ProductDetail() {
         <Button 
           variant="ghost" 
           onClick={() => navigate("/")}
-          className="group text-slate-500 hover:text-blue-600 hover:bg-blue-50 pl-0"
+          className="group text-slate-500 hover:text-[#9B5F71] hover:bg-[#FDF6F8] pl-0"
         >
           <ArrowLeft className="mr-2 h-4 w-4 transition-transform group-hover:-translate-x-1" />
           Volver al catálogo
@@ -98,7 +98,7 @@ export default function ProductDetail() {
           
           {/* Columna Izquierda: Imagen + Galería */}
           <div className="space-y-4">
-            <div className="group relative rounded-3xl overflow-hidden bg-slate-50 ring-1 ring-slate-100 shadow-2xl shadow-slate-200/50">
+            <div className="group relative rounded-3xl overflow-hidden bg-white ring-1 ring-slate-200 shadow-sm">
               <img 
                 src={selectedImage || product.image_url} 
                 alt={product.title} 
@@ -113,7 +113,7 @@ export default function ProductDetail() {
                     key={`${img}-${idx}`}
                     onClick={() => setSelectedImage(img)}
                     className={`aspect-square rounded-xl overflow-hidden ring-2 transition-all ${
-                      img === selectedImage ? "ring-blue-500" : "ring-slate-100 hover:ring-blue-200"
+                      img === selectedImage ? "ring-[#C05673]" : "ring-slate-100 hover:ring-[#EAD1D9]"
                     }`}
                   >
                     <img src={img} alt={`${product.title} ${idx + 1}`} className="h-full w-full object-cover" />
@@ -126,14 +126,14 @@ export default function ProductDetail() {
           {/* Columna Derecha: Información */}
           <div className="flex flex-col space-y-8">
             <div className="space-y-4">
-              <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-100 px-3 py-1 text-xs font-bold uppercase tracking-wider">
+              <Badge variant="secondary" className="bg-[#FDF6F8] text-[#9B5F71] border-[#EAD1D9] px-3 py-1 text-xs font-bold uppercase tracking-wider">
                 {product.category_name || "Colección Premium"}
               </Badge>
               <h1 className="text-4xl md:text-6xl font-black text-slate-900 capitalize leading-[1.1]">
                 {product.title}
               </h1>
               <div className="flex items-baseline gap-2">
-                <span className="text-4xl font-bold text-blue-600">
+                <span className="text-4xl font-bold text-slate-900">
                   ${Number(product.price).toLocaleString()}
                 </span>
                 <span className="text-slate-400 text-sm font-medium">IVA incluido</span>
@@ -148,7 +148,7 @@ export default function ProductDetail() {
             </div>
 
             {product.seller_username && (
-              <div className="rounded-2xl border border-slate-100 bg-slate-50 p-6">
+              <div className="rounded-2xl border border-slate-200 bg-white p-6">
                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Vendedor</h3>
                 <div className="flex items-center gap-4">
                   {product.seller_profile_image ? (
@@ -158,7 +158,7 @@ export default function ProductDetail() {
                       className="h-12 w-12 rounded-full object-cover ring-2 ring-white"
                     />
                   ) : (
-                    <div className="h-12 w-12 rounded-full bg-blue-600 flex items-center justify-center">
+                    <div className="h-12 w-12 rounded-full bg-[#C05673] flex items-center justify-center">
                       <span className="text-lg font-bold text-white">
                         {product.seller_username.charAt(0).toUpperCase()}
                       </span>
@@ -176,7 +176,7 @@ export default function ProductDetail() {
             <div className="space-y-4 pt-2">
               <Button 
                 onClick={() => addToCart(product)}
-                className="w-full h-16 text-xl font-bold bg-blue-600 hover:bg-blue-700 shadow-xl shadow-blue-200 transition-all active:scale-[0.98]"
+                className="w-full h-16 text-xl font-bold bg-[#C05673] hover:bg-[#B04B68] shadow-sm transition-all active:scale-[0.98]"
               >
                 <ShoppingCart className="mr-3 h-6 w-6" />
                 Añadir al Carrito
@@ -184,18 +184,18 @@ export default function ProductDetail() {
             </div>
 
             {/* Beneficios Trust Signals */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-8 border-t border-slate-50">
-              <div className="flex flex-col items-center text-center p-5 rounded-2xl bg-slate-50 border border-white">
-                <Truck className="h-6 w-6 text-blue-500 mb-3" />
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-8 border-t border-slate-100">
+              <div className="flex flex-col items-center text-center p-5 rounded-2xl bg-white border border-slate-200">
+                <Truck className="h-6 w-6 text-[#C05673] mb-3" />
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter mb-1">Logística</span>
                 <span className="text-xs font-bold text-slate-700">Envío Express Gratis</span>
               </div>
-              <div className="flex flex-col items-center text-center p-5 rounded-2xl bg-slate-50 border border-white">
+              <div className="flex flex-col items-center text-center p-5 rounded-2xl bg-white border border-slate-200">
                 <ShieldCheck className="h-6 w-6 text-green-500 mb-3" />
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter mb-1">Protección</span>
                 <span className="text-xs font-bold text-slate-700">Compra Segura</span>
               </div>
-              <div className="flex flex-col items-center text-center p-5 rounded-2xl bg-slate-50 border border-white">
+              <div className="flex flex-col items-center text-center p-5 rounded-2xl bg-white border border-slate-200">
                 <RefreshCcw className="h-6 w-6 text-orange-500 mb-3" />
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter mb-1">Garantía</span>
                 <span className="text-xs font-bold text-slate-700">30 Días de Cambio</span>

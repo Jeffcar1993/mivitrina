@@ -32,11 +32,11 @@ export default function Register() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-white">
+    <div className="min-h-screen flex flex-col bg-[#FBFBFB]">
       <header className="sticky top-0 z-10 w-full border-b border-slate-200 bg-white/80 backdrop-blur">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-            <div className="rounded-lg bg-blue-600 p-1.5">
+            <div className="rounded-lg bg-[#C05673] p-1.5">
               <Sparkles className="h-5 w-5 text-white" />
             </div>
             <span className="text-lg font-black tracking-tight text-slate-900">MIVITRINA</span>
@@ -45,7 +45,7 @@ export default function Register() {
             <Button asChild variant="ghost" className="font-semibold">
               <Link to="/login">Login</Link>
             </Button>
-            <Button asChild variant="outline" className="font-semibold">
+            <Button asChild variant="outline" className="font-semibold border-[#EACED7] text-[#9B5F71] hover:bg-[#FDF6F8]">
               <Link to="/">Inicio</Link>
             </Button>
           </div>
@@ -54,13 +54,13 @@ export default function Register() {
 
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-2">
         {/* Lado Izquierdo: Visual */}
-        <div className="hidden lg:flex bg-blue-600 items-center justify-center p-12 text-white">
+        <div className="hidden lg:flex bg-[#C05673] items-center justify-center p-12 text-white">
           <div className="max-w-md space-y-6">
             <div className="rounded-2xl bg-white/10 p-4 w-fit">
               <Sparkles className="h-12 w-12 text-white" />
             </div>
             <h1 className="text-5xl font-black leading-tight">Empieza a vender hoy mismo.</h1>
-            <p className="text-xl text-blue-100 font-light">
+            <p className="text-xl text-[#FBEFF3] font-light">
               Únete a cientos de personas que ya están ganando dinero con su vitrina digital.
             </p>
           </div>
@@ -105,7 +105,7 @@ export default function Register() {
                 />
               </div>
 
-              <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white h-12 text-lg font-bold" disabled={loading}>
+              <Button type="submit" className="w-full bg-[#C05673] hover:bg-[#B04B68] text-white h-12 text-lg font-bold" disabled={loading}>
                 {loading ? "Creando cuenta..." : "Registrarse ahora"}
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
@@ -113,7 +113,7 @@ export default function Register() {
 
             <p className="text-center text-slate-600">
               ¿Ya tienes una cuenta?{' '}
-              <Link to="/login" className="text-blue-600 font-bold hover:underline">
+              <Link to="/login" className="text-[#9B5F71] font-bold hover:underline">
                 Inicia sesión
               </Link>
             </p>
