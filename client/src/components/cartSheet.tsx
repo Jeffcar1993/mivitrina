@@ -9,9 +9,18 @@ import {
 import { Button } from "@/components/ui/button";
 import { ShoppingCart, Trash2, ShoppingBag } from "lucide-react";
 import { useCart } from "../context/cartContext";
+import { useNavigate } from "react-router-dom";
 
 export function CartSheet() {
   const { cart, total, removeFromCart } = useCart();
+  const navigate = useNavigate();
+
+  const handleCheckout = () => {
+    if (cart.length === 0) {
+      return;
+    }
+    navigate('/checkout');
+  };
 
   return (
     <Sheet>
@@ -71,7 +80,11 @@ export function CartSheet() {
                 <span className="font-black text-slate-900 text-2xl">${total.toLocaleString()}</span>
               </div>
               <SheetFooter>
-                <Button className="w-full bg-[#C05673] hover:bg-[#B04B68] h-12 text-lg font-bold shadow-sm">
+                <Button 
+                  onClick={handleCheckout}
+                  disabled={cart.length === 0}
+                  className="w-full bg-[#C05673] hover:bg-[#B04B68] h-12 text-lg font-bold shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                >
                   Finalizar Compra
                 </Button>
               </SheetFooter>

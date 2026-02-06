@@ -11,7 +11,7 @@ import { Badge } from "./components/ui/badge";
 import { Input } from "./components/ui/input";
 
 // Iconos y Componente personalizado
-import { ShoppingCart, Eye, Sparkles, Trash2, LogOut, User, Plus, Search } from "lucide-react";
+import { ShoppingCart, Sparkles, Trash2, LogOut, User, Plus, Search } from "lucide-react";
 import { AddProductForm } from "./components/addProductForm";
 import { CartSheet } from './components/cartSheet';
 
@@ -34,6 +34,20 @@ export default function App() {
       product.description.toLowerCase().includes(query);
     return matchesCategory && matchesSearch;
   });
+
+  // Calcular tendencias dinámicamente
+  const trendingCategories = (() => {
+    const categoryCounts = products.reduce((acc, product) => {
+      const cat = product.category_name || 'Sin categoría';
+      acc[cat] = (acc[cat] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    return Object.entries(categoryCounts)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 3)
+      .map(([category]) => category);
+  })();
   
   // Extraemos datos y funciones del Carrito
   const { addToCart } = useCart();
@@ -171,12 +185,23 @@ export default function App() {
               <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
                 <p className="text-sm font-semibold text-slate-700">Tendencias hoy</p>
                 <div className="mt-4 space-y-3">
-                  {["Ropa con estilo", "Accesorios premium", "Tecnología práctica"].map((item) => (
-                    <div key={item} className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
-                      <span className="text-sm text-slate-700">{item}</span>
-                      <span className="text-xs font-semibold text-[#9B5F71]">Ver más</span>
-                    </div>
-                  ))}
+                  {trendingCategories.length > 0 ? (
+                    trendingCategories.map((item) => (
+                      <button
+                        key={item}
+                        onClick={() => {
+                          setSelectedCategory(item);
+                          document.getElementById("productos")?.scrollIntoView({ behavior: "smooth" });
+                        }}
+                        className="w-full flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3 hover:bg-[#FDF6F8] transition-colors cursor-pointer"
+                      >
+                        <span className="text-sm text-slate-700 capitalize">{item}</span>
+                        <span className="text-xs font-semibold text-[#9B5F71] hover:text-[#C05673]">Ver más →</span>
+                      </button>
+                    ))
+                  ) : (
+                    <p className="text-sm text-slate-500">Sin productos aún</p>
+                  )}
                 </div>
               </div>
             </div>
@@ -188,7 +213,7 @@ export default function App() {
           <div className="mb-8 flex flex-col items-center justify-between gap-4 border-b border-slate-100 pb-8 sm:flex-row">
             <div>
               <h3 className="text-xl font-bold text-slate-800">Todos los productos</h3>
-              <p className="text-sm text-slate-500">Curado para ti, actualizado cada día.</p>
+              <p className="text-sm text-slate-500">Creado para ti, actualizado cada día.</p>
             </div>
             <div className="relative w-full max-w-md">
               <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -278,11 +303,12 @@ export default function App() {
                   <CardFooter className="mt-auto flex items-center gap-2 p-5 pt-4">
                     <Button
                       onClick={() => addToCart(product)}
-                      size="icon"
-                      className="rounded-full bg-[#C05673] text-white shadow-sm transition-all hover:bg-[#B04B68] sm:opacity-0 sm:group-hover:opacity-100"
+                      size="sm"
+                      className="flex-1 rounded-full bg-[#C05673] text-white shadow-sm transition-all hover:bg-[#B04B68]"
                       title="Añadir al carrito"
                     >
-                      <Plus className="h-4 w-4" />
+                      <Plus className="h-4 w-4 mr-2" />
+                      Comprar
                     </Button>
                     
                     {/* Botón Borrar - solo para el creador */}
@@ -296,13 +322,6 @@ export default function App() {
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     )}
-
-                    {/* Botón Ver Detalle */}
-                    <Link to={`/product/${product.id}`} className="ml-auto">
-                      <Button variant="outline" size="icon" className="shrink-0 rounded-full border-slate-200 hover:bg-slate-50 hover:text-[#9B5F71]">
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                    </Link>
                   </CardFooter>
                 </Card>
               ))}
@@ -347,7 +366,7 @@ export default function App() {
 
           <div className="mt-8 flex flex-col items-center justify-between gap-2 border-t border-slate-100 pt-6 text-xs text-slate-400 md:flex-row">
             <p>© 2026 MiVitrina. Todos los derechos reservados.</p>
-            <p>Hecho con React + Tailwind.</p>
+            <p>Hecho con amor y mucho café.</p>
           </div>
         </div>
       </footer>

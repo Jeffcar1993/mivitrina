@@ -6,6 +6,8 @@ import { query } from './config/db.js'; // TypeScript ESM requires explicit exte
 import cloudinary from './config/cloudinary.js';
 import { upload } from './middleware/multer.js';
 import productRoutes from './routes/productRoutes.js';
+import orderRoutes from './routes/orderRoutes.js';
+import paymentRoutes from './routes/paymentRoutes.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { authMiddleware, type AuthRequest } from './middleware/auth.js';
@@ -20,6 +22,8 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true })); // Añade esta línea para formularios
 
 app.use('/api/products', productRoutes); // Aquí conectamos todo
+app.use('/api/orders', orderRoutes);
+app.use('/api/payments', paymentRoutes);
 
 // Ruta de prueba
 app.get('/', (req: Request, res: Response) => {
