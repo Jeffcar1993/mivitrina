@@ -39,6 +39,30 @@ router.post('/create', async (req: Request, res: Response) => {
       }
     }
 
+    await query('BEGIN');
+
+    // Validar stock disponible
+    for (const item of items) {
+      const requestedQty = Math.max(1, Number(item.quantity || 1));
+      const stockResult = await query(
+        'SELECT quantity FROM products WHERE id = $1 FOR UPDATE',
+        [item.productId]
+      );
+
+      if (stockResult.rows.length === 0) {
+        await query('ROLLBACK');
+        res.status(404).json({ error: 'Producto no encontrado' });
+        return;
+      }
+
+      const availableQty = Number(stockResult.rows[0].quantity || 0);
+      if (availableQty < requestedQty) {
+        await query('ROLLBACK');
+        res.status(409).json({ error: 'No hay suficiente stock disponible' });
+        return;
+      }
+    }
+
     // Crear orden
     const orderResult = await query(
       `INSERT INTO orders (order_number, user_id, customer_email, customer_name, customer_phone, customer_address, customer_city, total_amount, status)
@@ -49,14 +73,20 @@ router.post('/create', async (req: Request, res: Response) => {
 
     const orderId = orderResult.rows[0].id;
 
-    // Crear items de la orden
+    // Crear items de la orden SIN descontar stock aún
+    // El stock se deducirá cuando el pago sea confirmado
     for (const item of items) {
+      const requestedQty = Math.max(1, Number(item.quantity || 1));
+      const unitPrice = Number(item.price);
+
       await query(
         `INSERT INTO order_items (order_id, product_id, seller_id, quantity, unit_price, subtotal)
          VALUES ($1, $2, $3, $4, $5, $6)`,
-        [orderId, item.productId, item.sellerId, item.quantity || 1, item.price, Number(item.price) * (item.quantity || 1)]
+        [orderId, item.productId, item.sellerId, requestedQty, unitPrice, unitPrice * requestedQty]
       );
     }
+
+    await query('COMMIT');
 
     res.json({
       success: true,
@@ -65,46 +95,9 @@ router.post('/create', async (req: Request, res: Response) => {
       totalAmount: orderResult.rows[0].total_amount,
     });
   } catch (error) {
+    await query('ROLLBACK');
     console.error('Error al crear orden:', error);
     res.status(500).json({ error: 'Error al crear la orden' });
-  }
-});
-
-// Obtener detalles de una orden
-router.get('/:orderNumber', async (req: Request, res: Response) => {
-  const { orderNumber } = req.params;
-
-  try {
-    const result = await query(
-      `SELECT id, order_number, customer_name, customer_email, customer_phone, customer_address, customer_city, 
-              total_amount, status, payment_id, created_at
-       FROM orders WHERE order_number = $1`,
-      [orderNumber]
-    );
-
-    if (result.rows.length === 0) {
-      res.status(404).json({ error: 'Orden no encontrada' });
-      return;
-    }
-
-    const order = result.rows[0];
-
-    // Obtener items de la orden
-    const itemsResult = await query(
-      `SELECT oi.id, oi.product_id, p.title, p.image_url, oi.quantity, oi.unit_price, oi.subtotal
-       FROM order_items oi
-       JOIN products p ON oi.product_id = p.id
-       WHERE oi.order_id = $1`,
-      [order.id]
-    );
-
-    res.json({
-      ...order,
-      items: itemsResult.rows,
-    });
-  } catch (error) {
-    console.error('Error al obtener orden:', error);
-    res.status(500).json({ error: 'Error al obtener la orden' });
   }
 });
 

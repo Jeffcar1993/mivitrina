@@ -12,7 +12,7 @@ router.post('/', authMiddleware, upload.array('images', 4), async (req: AuthRequ
     console.log("BODY RECIBIDO:", req.body); // Esto nos dirá si title llega o no
     console.log("ARCHIVOS RECIBIDOS:", Array.isArray(req.files) && req.files.length > 0 ? "SÍ" : "NO");
 
-    const { title, description, price, category_id } = req.body;
+    const { title, description, price, category_id, quantity } = req.body;
     const userId = req.userId; // Viene del middleware de auth
 
     // Accedemos a los archivos de Multer
@@ -40,12 +40,13 @@ router.post('/', authMiddleware, upload.array('images', 4), async (req: AuthRequ
 
     // 2. Guardar en Postgres (Neon) incluyendo user_id
     const sql = `
-      INSERT INTO products (title, description, price, image_url, category_id, user_id)
-      VALUES ($1, $2, $3, $4, $5, $6)
+      INSERT INTO products (title, description, price, quantity, image_url, category_id, user_id)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING *
     `;
     
-    const values = [title, description, price, mainImageUrl, category_id, userId];
+    const normalizedQuantity = Math.max(1, Number(quantity || 1));
+    const values = [title, description, price, normalizedQuantity, mainImageUrl, category_id, userId];
     const result = await query(sql, values);
 
     const productId = result.rows[0].id;
@@ -86,6 +87,7 @@ router.get('/', async (_req: Request, res: Response): Promise<void> => {
       FROM products p
       JOIN categories c ON p.category_id = c.id
       LEFT JOIN users u ON p.user_id = u.id
+      WHERE p.quantity > 0
       ORDER BY p.created_at DESC
     `;
     
@@ -115,7 +117,7 @@ router.get('/:id', async (req: Request, res: Response): Promise<void> => {
       JOIN categories c ON p.category_id = c.id
       LEFT JOIN users u ON p.user_id = u.id
       LEFT JOIN product_images pi ON p.id = pi.product_id
-      WHERE p.id = $1
+      WHERE p.id = $1 AND p.quantity > 0
       GROUP BY p.id, c.name, u.id, u.username, u.profile_image
     `;
     
@@ -174,7 +176,7 @@ router.delete('/:id', async (req: Request, res: Response): Promise<void> => {
 router.put('/:id', upload.single('image'), async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const { title, description, price, category_id } = req.body;
+    const { title, description, price, category_id, quantity } = req.body;
 
     // 1. Buscamos el producto actual para saber si tiene una imagen previa
     const currentProduct = await query('SELECT image_url FROM products WHERE id = $1', [id]);
@@ -206,12 +208,13 @@ router.put('/:id', upload.single('image'), async (req: Request, res: Response): 
     // 3. Actualizamos en la base de datos
     const sql = `
       UPDATE products 
-      SET title = $1, description = $2, price = $3, image_url = $4, category_id = $5
-      WHERE id = $6
+      SET title = $1, description = $2, price = $3, quantity = $4, image_url = $5, category_id = $6
+      WHERE id = $7
       RETURNING *
     `;
     
-    const values = [title, description, price, finalImageUrl, category_id, id];
+    const normalizedQuantity = Math.max(1, Number(quantity || 1));
+    const values = [title, description, price, normalizedQuantity, finalImageUrl, category_id, id];
     const result = await query(sql, values);
 
     res.json({

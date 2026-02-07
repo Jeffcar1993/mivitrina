@@ -292,6 +292,9 @@ export default function App() {
                     <p className="mt-1 text-xl font-semibold text-slate-900">
                       ${Number(product.price).toLocaleString()}
                     </p>
+                    <p className="mt-1 text-xs font-semibold text-slate-500">
+                      Disponibles: {Number(product.quantity ?? 0)}
+                    </p>
                   </CardHeader>
 
                   <CardContent className="px-5 py-2">

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
+import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import api from '../lib/axios';
 import { useCart } from '../context/cartContext';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -16,8 +16,22 @@ interface OrderData {
   createdAt: string;
 }
 
+const normalizeOrder = (data: unknown): OrderData => {
+  const record = (data && typeof data === 'object') ? (data as Record<string, unknown>) : {};
+  return {
+    orderId: Number(record.orderId ?? record.id ?? 0),
+    orderNumber: String(record.orderNumber ?? record.order_number ?? ''),
+    status: String(record.status ?? 'pending'),
+    totalAmount: Number(record.totalAmount ?? record.total_amount ?? 0),
+    customerName: String(record.customerName ?? record.customer_name ?? ''),
+    customerEmail: String(record.customerEmail ?? record.customer_email ?? ''),
+    createdAt: String(record.createdAt ?? record.created_at ?? ''),
+  };
+};
+
 export default function PaymentConfirmation() {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const { clearCart } = useCart();
   const [order, setOrder] = useState<OrderData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -27,33 +41,46 @@ export default function PaymentConfirmation() {
   const paymentStatus = searchParams.get('status');
   const externalReference = searchParams.get('external_reference');
 
+  const [isCleared, setIsCleared] = useState(false); // Nuevo estado para controlar limpieza del carrito
+
   useEffect(() => {
     const verifyPayment = async () => {
-      try {
-        if (!externalReference) {
-          setError('No se pudo verificar el pago');
-          setLoading(false);
-          return;
-        }
+      if (!externalReference || isCleared) return; // Si ya se limpió, no hacer nada
 
-        // Obtener información de la orden
-        const response = await api.get(`/orders/${externalReference}`);
-        setOrder(response.data);
+  try {
+      if (paymentStatus === 'approved') {
+        // 1. Primero confirmamos en el servidor
+        await api.put(`/orders/${externalReference}/confirm-payment`);
         
-        // Limpiar carrito SOLO si el pago fue exitoso
-        if (paymentStatus === 'approved') {
-          clearCart();
-        }
-      } catch (err) {
-        console.error('Error al verificar pago:', err);
-        setError('Hubo un error al cargar los detalles de tu orden');
-      } finally {
-        setLoading(false);
+        // 2. Si la confirmación fue exitosa, limpiamos el carrito
+        clearCart(); 
+        setIsCleared(true); // Marcamos como limpio
+        console.log("✅ Carrito limpiado y pago confirmado");
       }
-    };
 
-    verifyPayment();
-  }, [externalReference, paymentStatus, clearCart]);
+      // 3. Obtenemos la orden para mostrar los datos en la UI
+      const response = await api.get(`/orders/${externalReference}`);
+      setOrder(normalizeOrder(response.data));
+      
+    } catch (err) {
+      console.error('Error al verificar pago:', err);
+      setError('Hubo un error al procesar tu compra');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  verifyPayment();
+}, [externalReference, paymentStatus, clearCart, isCleared]); // Añadido isCleared
+
+  useEffect(() => {
+    if (paymentStatus !== 'approved' || !order) return;
+    const timer = setTimeout(() => {
+      navigate('/');
+    }, 6000);
+
+    return () => clearTimeout(timer);
+  }, [paymentStatus, order, navigate]);
 
   if (loading) {
     return (
@@ -169,7 +196,7 @@ export default function PaymentConfirmation() {
                 <div className="flex justify-between">
                   <span className="text-slate-600">Total</span>
                   <span className="font-bold text-[#C05673]">
-                    ${order.totalAmount.toLocaleString('es-CO', { maximumFractionDigits: 2 })}
+                    ${Number(order.totalAmount ?? 0).toLocaleString('es-CO', { maximumFractionDigits: 2 })}
                   </span>
                 </div>
               </div>

@@ -8,6 +8,7 @@ import { upload } from './middleware/multer.js';
 import productRoutes from './routes/productRoutes.js';
 import orderRoutes from './routes/orderRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
+import cartRoutes from './routes/cartRoutes.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { authMiddleware, type AuthRequest } from './middleware/auth.js';
@@ -24,6 +25,7 @@ app.use(express.urlencoded({ extended: true })); // Añade esta línea para form
 app.use('/api/products', productRoutes); // Aquí conectamos todo
 app.use('/api/orders', orderRoutes);
 app.use('/api/payments', paymentRoutes);
+app.use('/api/cart', cartRoutes);
 
 // Ruta de prueba
 app.get('/', (req: Request, res: Response) => {

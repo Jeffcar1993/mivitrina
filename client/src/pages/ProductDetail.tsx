@@ -138,6 +138,9 @@ export default function ProductDetail() {
                 </span>
                 <span className="text-slate-400 text-sm font-medium">IVA incluido</span>
               </div>
+              <div className="text-sm font-semibold text-slate-500">
+                Disponibles: {Number(product.quantity ?? 0)}
+              </div>
             </div>
 
             <div className="border-y border-slate-100 py-8">
@@ -176,10 +179,11 @@ export default function ProductDetail() {
             <div className="space-y-4 pt-2">
               <Button 
                 onClick={() => addToCart(product)}
-                className="w-full h-16 text-xl font-bold bg-[#C05673] hover:bg-[#B04B68] shadow-sm transition-all active:scale-[0.98]"
+                disabled={Number(product.quantity ?? 0) <= 0}
+                className="w-full h-16 text-xl font-bold bg-[#C05673] hover:bg-[#B04B68] shadow-sm transition-all active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 <ShoppingCart className="mr-3 h-6 w-6" />
-                Añadir al Carrito
+                {Number(product.quantity ?? 0) > 0 ? 'Añadir al Carrito' : 'Sin stock'}
               </Button>
             </div>
 

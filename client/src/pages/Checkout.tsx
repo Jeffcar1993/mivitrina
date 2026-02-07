@@ -93,8 +93,7 @@ export default function Checkout() {
       if (initPoint) {
         window.location.href = initPoint;
       } else {
-        const preferenceId = paymentResponse.data.preferenceId;
-        window.location.href = `https://checkout.mercadopago.com.co/${preferenceId}`;
+        toast.error('No se pudo iniciar el pago con Mercado Pago. Intenta de nuevo.');
       }
     } catch (error) {
       console.error('Error al crear la orden:', error);

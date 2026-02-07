@@ -5,6 +5,9 @@ import { MercadoPagoConfig, Preference } from 'mercadopago';
 // Configurar Mercado Pago (usa tu access token)
 const client = new MercadoPagoConfig({
   accessToken: process.env.MERCADO_PAGO_ACCESS_TOKEN || '',
+  options: {
+    timeout: 20000, // Aumentar timeout a 20 segundos para evitar timeouts
+  },
 });
 
 const router = express.Router();
@@ -30,8 +33,14 @@ router.post('/create-preference', async (req: Request, res: Response) => {
     // Usar SDK de Mercado Pago con acceso token configurado
     try {
       const preference = new Preference(client);
+      
+      // Log de los items que se envían
+      console.log('Items a enviar a Mercado Pago:', JSON.stringify(items, null, 2));
+      console.log('Payer a enviar:', JSON.stringify(payer, null, 2));
+      
       const preferenceData = await preference.create({
         body: {
+          // Los datos país y moneda se determinan automáticamente por el token de acceso
           items: items.map((item: any) => ({
             title: item.title,
             quantity: item.quantity,
@@ -68,21 +77,28 @@ router.post('/create-preference', async (req: Request, res: Response) => {
       );
 
       res.json({ preferenceId: preferenceData.id, initPoint });
-    } catch (mpError) {
-      console.error('Error con Mercado Pago:', mpError);
-      // Si hay error con MP, usar preference_id simulado para desarrollo
-      const simulatedPreferenceId = `PREF-${orderNumber}-${Date.now()}`;
-      const fallbackInitPoint = `${process.env.CLIENT_URL || 'http://localhost:5173'}/payment-confirmation?status=pending&external_reference=${orderNumber}`;
-
-      await query(
-        'UPDATE orders SET mercado_pago_preference_id = $1 WHERE id = $2',
-        [simulatedPreferenceId, orderId]
-      );
-
-      res.json({
-        preferenceId: simulatedPreferenceId,
-        initPoint: fallbackInitPoint,
-        message: 'En producción, usa SDK de Mercado Pago',
+    } catch (mpError: any) {
+      console.error('\n❌ ERROR DETALLADO CON MERCADO PAGO:');
+      console.error('─'.repeat(50));
+      console.error('Tipo de error:', mpError?.type);
+      console.error('Mensaje:', mpError?.message);
+      console.error('Status:', mpError?.status);
+      console.error('Cause:', mpError?.cause);
+      
+      // Si hay response con detalles de validación
+      if (mpError?.response) {
+        console.error('Response completa:', JSON.stringify(mpError.response, null, 2));
+      }
+      if (mpError?.body) {
+        console.error('Body:', JSON.stringify(mpError.body, null, 2));
+      }
+      console.error('─'.repeat(50));
+      console.error('Token usado:', process.env.MERCADO_PAGO_ACCESS_TOKEN?.substring(0, 30) + '...');
+      console.error('─'.repeat(50) + '\n');
+      
+      res.status(502).json({
+        error: 'No se pudo iniciar el pago con Mercado Pago. Intenta nuevamente.',
+        details: process.env.NODE_ENV === 'development' ? mpError?.message : undefined
       });
     }
   } catch (error) {
@@ -158,6 +174,51 @@ router.get('/:orderId', async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Error al obtener pago:', error);
     res.status(500).json({ error: 'Error al obtener el estado del pago' });
+  }
+});
+
+// Confirmar pago y actualizar status a 'completed'
+router.put('/:orderNumber/confirm-payment', async (req: Request, res: Response) => {
+  const { orderNumber } = req.params;
+
+  try {
+    await query('BEGIN'); // Iniciar transacción
+
+    // 1. Actualizar la orden a completada
+    const orderResult = await query(
+      `UPDATE orders SET status = 'completed', updated_at = CURRENT_TIMESTAMP 
+       WHERE order_number = $1 AND status != 'completed'
+       RETURNING id`,
+      [orderNumber]
+    );
+
+    if (orderResult.rows.length > 0) {
+      const orderId = orderResult.rows[0].id;
+
+      // 2. Buscar los items de esa orden
+      const items = await query(
+        'SELECT product_id, quantity FROM order_items WHERE order_id = $1',
+        [orderId]
+      );
+
+      // 3. Descontar el stock de cada producto
+      for (const item of items.rows) {
+        await query(
+          'UPDATE products SET quantity = GREATEST(0, quantity - $1) WHERE id = $2',
+          [item.quantity, item.product_id]
+        );
+      }
+      
+      await query('COMMIT');
+      res.json({ success: true, message: 'Pago confirmado y stock actualizado' });
+    } else {
+      await query('ROLLBACK');
+      res.status(404).json({ error: 'Orden no encontrada o ya procesada' });
+    }
+  } catch (error) {
+    await query('ROLLBACK');
+    console.error('Error al confirmar pago:', error);
+    res.status(500).json({ error: 'Error interno' });
   }
 });
 

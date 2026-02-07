@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import api from "@/lib/axios";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +13,7 @@ import {
   DialogTrigger 
 } from "@/components/ui/dialog";
 import { PlusCircle, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 interface AddProductFormProps {
   onProductAdded: () => void;
@@ -20,6 +22,7 @@ interface AddProductFormProps {
 export function AddProductForm({ onProductAdded }: AddProductFormProps) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
   const [categories, setCategories] = useState<{ id: number; name: string }[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [categoriesError, setCategoriesError] = useState<string | null>(null);
@@ -57,6 +60,14 @@ export function AddProductForm({ onProductAdded }: AddProductFormProps) {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
+
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setLoading(false);
+      toast.error('Debes iniciar sesión para publicar un producto');
+      navigate('/login');
+      return;
+    }
 
     const imagesInput = e.currentTarget.elements.namedItem("images") as HTMLInputElement | null;
     const imageFiles = imagesInput?.files;
@@ -115,6 +126,11 @@ export function AddProductForm({ onProductAdded }: AddProductFormProps) {
           <div className="space-y-2">
             <Label htmlFor="price">Precio (USD)</Label>
             <Input id="price" name="price" type="number" step="0.01" placeholder="0.00" required />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="quantity">Cantidad disponible</Label>
+            <Input id="quantity" name="quantity" type="number" min="1" step="1" placeholder="1" required />
           </div>
 
           <div className="space-y-2">
