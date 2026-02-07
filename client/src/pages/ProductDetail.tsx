@@ -8,6 +8,7 @@ import { useCart } from "../context/cartContext";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CartSheet } from "@/components/cartSheet";
+import { LogoIcon } from "@/components/LogoIcon";
 
 // Iconos
 import { 
@@ -16,8 +17,7 @@ import {
   ShieldCheck, 
   Truck, 
   RefreshCcw,
-  Loader2,
-  Sparkles
+  Loader2
 } from "lucide-react";
 
 export default function ProductDetail() {
@@ -68,7 +68,7 @@ export default function ProductDetail() {
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <Link to="/" className="flex items-center gap-2 group">
             <div className="rounded-lg bg-[#C05673] p-1.5 transition-transform group-hover:scale-110">
-              <Sparkles className="h-5 w-5 text-white" />
+              <LogoIcon className="h-5 w-5 text-white" />
             </div>
             <h1 className="text-xl font-black tracking-tighter text-slate-900 leading-none">
               MIVITRINA

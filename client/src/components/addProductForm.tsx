@@ -124,7 +124,7 @@ export function AddProductForm({ onProductAdded }: AddProductFormProps) {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="price">Precio (USD)</Label>
+            <Label htmlFor="price">Precio (COP)</Label>
             <Input id="price" name="price" type="number" step="0.01" placeholder="0.00" required />
           </div>
 

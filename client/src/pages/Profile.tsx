@@ -6,7 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Sparkles, ArrowLeft, Camera, Save, ShoppingBag, Package } from "lucide-react";
+import { ArrowLeft, Camera, Save, ShoppingBag, Package } from "lucide-react";
+import { LogoIcon } from "@/components/LogoIcon";
 import { toast } from "sonner";
 import api from '../lib/axios';
 import type { User } from '../types';
@@ -110,7 +111,7 @@ export default function Profile() {
       <div className="flex h-screen w-full flex-col items-center justify-center bg-white">
         <div className="relative flex items-center justify-center">
           <div className="h-16 w-16 animate-spin rounded-full border-4 border-slate-200 border-t-[#C05673]"></div>
-          <Sparkles className="absolute h-6 w-6 text-[#C05673]" />
+          <LogoIcon className="absolute h-6 w-6 text-[#C05673]" />
         </div>
         <p className="mt-4 animate-pulse text-sm font-medium text-slate-500">Cargando perfil...</p>
       </div>
@@ -135,7 +136,7 @@ export default function Profile() {
             <CardTitle className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="rounded-full bg-[#C05673] p-3">
-                  <Sparkles className="h-6 w-6 text-white" />
+                  <LogoIcon className="h-6 w-6 text-white" />
                 </div>
                 <div>
                   <p className="text-xl font-bold text-slate-900">Mi Perfil</p>

@@ -11,7 +11,8 @@ import { Badge } from "./components/ui/badge";
 import { Input } from "./components/ui/input";
 
 // Iconos y Componente personalizado
-import { ShoppingCart, Sparkles, Trash2, LogOut, User, Plus, Search } from "lucide-react";
+import { ShoppingCart, Trash2, LogOut, User, Plus, Search } from "lucide-react";
+import { LogoIcon } from "./components/LogoIcon";
 import { AddProductForm } from "./components/addProductForm";
 import { CartSheet } from './components/cartSheet';
 
@@ -101,7 +102,7 @@ export default function App() {
       <div className="flex h-screen w-full flex-col items-center justify-center bg-white">
         <div className="relative flex items-center justify-center">
           <div className="h-16 w-16 animate-spin rounded-full border-4 border-slate-200 border-t-[#C05673]"></div>
-          <Sparkles className="absolute h-6 w-6 text-[#C05673]" />
+          <LogoIcon className="absolute h-6 w-6 text-[#C05673]" />
         </div>
         <p className="mt-4 animate-pulse text-sm font-medium text-slate-500">Preparando tu escaparate...</p>
       </div>
@@ -115,7 +116,7 @@ export default function App() {
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <div className="flex items-center gap-2">
             <div className="rounded-lg bg-[#C05673] p-1.5">
-              <Sparkles className="h-6 w-6 text-white" />
+              <LogoIcon className="h-6 w-6 text-white" />
             </div>
             <h1 className="text-xl font-black tracking-tighter text-slate-900 leading-none">
               MIVITRINA
@@ -339,7 +340,7 @@ export default function App() {
             <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <div className="rounded-lg bg-[#C05673] p-1.5">
-                  <Sparkles className="h-4 w-4 text-white" />
+                  <LogoIcon className="h-4 w-4 text-white" />
                 </div>
                 <span className="text-sm font-black tracking-tight text-slate-900">MIVITRINA</span>
               </div>

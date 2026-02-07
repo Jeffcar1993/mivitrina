@@ -9,20 +9,31 @@ import productRoutes from './routes/productRoutes.js';
 import orderRoutes from './routes/orderRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
 import cartRoutes from './routes/cartRoutes.js';
+import authRoutes from './routes/authRoutes.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { authMiddleware, type AuthRequest } from './middleware/auth.js';
+import passport from './config/passport.js';
+import { configurePassport } from './config/passport.js';
 
 dotenv.config();
 
 const app = express();
 const JWT_SECRET = process.env.JWT_SECRET || 'tu-secreto-super-seguro-cambiar-en-produccion';
 
+// Configurar Passport
+configurePassport();
+
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true })); // Añade esta línea para formularios
+app.use(passport.initialize());
 
 app.use('/api/products', productRoutes); // Aquí conectamos todo
+app.use('/api/orders', orderRoutes);
+app.use('/api/payments', paymentRoutes);
+app.use('/api/cart', cartRoutes);
+app.use('/api/auth', authRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/cart', cartRoutes);
