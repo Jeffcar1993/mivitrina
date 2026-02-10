@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ArrowRight } from "lucide-react";
 import { toast } from "sonner";
-import { LogoIcon } from "@/components/LogoIcon";
+import LogoImage from '../assets/Logo.webp';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -46,11 +46,8 @@ export default function Register() {
     <div className="min-h-screen flex flex-col bg-[#FBFBFB]">
       <header className="sticky top-0 z-10 w-full border-b border-slate-200 bg-white/80 backdrop-blur">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-            <div className="rounded-lg bg-[#C05673] p-1.5">
-              <LogoIcon className="h-5 w-5 text-white" />
-            </div>
-            <span className="text-lg font-black tracking-tight text-slate-900">MIVITRINA</span>
+          <Link to="/" className="flex items-center hover:opacity-80 transition-opacity">
+            <img src={LogoImage} alt="MiVitrina Logo" className="h-12 w-auto object-contain" />
           </Link>
           <div className="flex items-center gap-2">
             <Button asChild variant="ghost" className="font-semibold">
@@ -68,7 +65,7 @@ export default function Register() {
         <div className="hidden lg:flex bg-[#C05673] items-center justify-center p-12 text-white">
           <div className="max-w-md space-y-6">
             <div className="rounded-2xl bg-white/10 p-4 w-fit">
-              <LogoIcon className="h-12 w-12 text-white" />
+              <img src={LogoImage} alt="MiVitrina Logo" className="h-16 w-auto object-contain brightness-0 invert" />
             </div>
             <h1 className="text-5xl font-black leading-tight">Empieza a vender hoy mismo.</h1>
             <p className="text-xl text-[#FBEFF3] font-light">

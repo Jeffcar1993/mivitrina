@@ -7,10 +7,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Camera, Save, ShoppingBag, Package } from "lucide-react";
-import { LogoIcon } from "@/components/LogoIcon";
 import { toast } from "sonner";
 import api from '../lib/axios';
 import type { User } from '../types';
+import LogoImage from '../assets/Logo.webp';
 
 interface Order {
   id: number;
@@ -110,8 +110,8 @@ export default function Profile() {
     return (
       <div className="flex h-screen w-full flex-col items-center justify-center bg-white">
         <div className="relative flex items-center justify-center">
-          <div className="h-16 w-16 animate-spin rounded-full border-4 border-slate-200 border-t-[#C05673]"></div>
-          <LogoIcon className="absolute h-6 w-6 text-[#C05673]" />
+          <div className="h-24 w-24 animate-spin rounded-full border-4 border-slate-200 border-t-[#C05673]"></div>
+          <img src={LogoImage} alt="MiVitrina Logo" className="absolute h-16 w-16 object-contain" />
         </div>
         <p className="mt-4 animate-pulse text-sm font-medium text-slate-500">Cargando perfil...</p>
       </div>
@@ -136,7 +136,7 @@ export default function Profile() {
             <CardTitle className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="rounded-full bg-[#C05673] p-3">
-                  <LogoIcon className="h-6 w-6 text-white" />
+                  <img src={LogoImage} alt="MiVitrina Logo" className="h-8 w-8 object-contain brightness-0 invert" />
                 </div>
                 <div>
                   <p className="text-xl font-bold text-slate-900">Mi Perfil</p>

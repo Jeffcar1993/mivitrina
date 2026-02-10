@@ -12,9 +12,9 @@ import { Input } from "./components/ui/input";
 
 // Iconos y Componente personalizado
 import { ShoppingCart, Trash2, LogOut, User, Plus, Search } from "lucide-react";
-import { LogoIcon } from "./components/LogoIcon";
 import { AddProductForm } from "./components/addProductForm";
 import { CartSheet } from './components/cartSheet';
+import LogoImage from './assets/Logo.webp';
 
 export default function App() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -101,8 +101,8 @@ export default function App() {
     return (
       <div className="flex h-screen w-full flex-col items-center justify-center bg-white">
         <div className="relative flex items-center justify-center">
-          <div className="h-16 w-16 animate-spin rounded-full border-4 border-slate-200 border-t-[#C05673]"></div>
-          <LogoIcon className="absolute h-6 w-6 text-[#C05673]" />
+          <div className="h-32 w-32 animate-spin rounded-full border-4 border-slate-200 border-t-[#C05673]"></div>
+          <img src={LogoImage} alt="MiVitrina Logo" className="absolute h-20 w-20 object-contain" />
         </div>
         <p className="mt-4 animate-pulse text-sm font-medium text-slate-500">Preparando tu escaparate...</p>
       </div>
@@ -114,13 +114,8 @@ export default function App() {
       {/* Header con efecto Blur */}
       <header className="sticky top-0 z-50 w-full border-b border-slate-200 bg-white/80 backdrop-blur-xl">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <div className="flex items-center gap-2">
-            <div className="rounded-lg bg-[#C05673] p-1.5">
-              <LogoIcon className="h-6 w-6 text-white" />
-            </div>
-            <h1 className="text-xl font-black tracking-tighter text-slate-900 leading-none">
-              MIVITRINA
-            </h1>
+          <div className="flex items-center">
+            <img src={LogoImage} alt="MiVitrina Logo" className="h-14 w-auto object-contain" />
           </div>
           
           <div className="flex items-center gap-2">
@@ -177,8 +172,12 @@ export default function App() {
                 <Button asChild className="h-11 rounded-full bg-[#C05673] px-8 text-white hover:bg-[#B04B68]">
                   <Link to={isAuthenticated ? "/" : "/login"}>Quiero vender</Link>
                 </Button>
-                <Button asChild variant="outline" className="h-11 rounded-full border-slate-200 px-8 text-slate-900 hover:bg-slate-50">
-                  <Link to="#productos">Explorar productos</Link>
+                <Button 
+                  onClick={() => document.getElementById("productos")?.scrollIntoView({ behavior: "smooth" })}
+                  variant="outline" 
+                  className="h-11 rounded-full border-slate-200 px-8 text-slate-900 hover:bg-slate-50"
+                >
+                  Explorar productos
                 </Button>
               </div>
             </div>
@@ -338,11 +337,8 @@ export default function App() {
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
             <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <div className="rounded-lg bg-[#C05673] p-1.5">
-                  <LogoIcon className="h-4 w-4 text-white" />
-                </div>
-                <span className="text-sm font-black tracking-tight text-slate-900">MIVITRINA</span>
+              <div className="flex items-center">
+                <img src={LogoImage} alt="MiVitrina Logo" className="h-10 w-auto object-contain" />
               </div>
               <p className="text-sm text-slate-500">
                 Tu escaparate digital para comprar y vender productos de forma segura.

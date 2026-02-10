@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { LogoIcon } from "@/components/LogoIcon";
+import LogoImage from '../assets/Logo.webp';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -45,11 +45,8 @@ export default function Login() {
     <div className="min-h-screen flex flex-col bg-[#FBFBFB]">
       <header className="sticky top-0 z-10 w-full border-b border-slate-200 bg-white/80 backdrop-blur">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-            <div className="rounded-lg bg-[#C05673] p-1.5">
-              <LogoIcon className="h-5 w-5 text-white" />
-            </div>
-            <span className="text-lg font-black tracking-tight text-slate-900">MIVITRINA</span>
+          <Link to="/" className="flex items-center hover:opacity-80 transition-opacity">
+            <img src={LogoImage} alt="MiVitrina Logo" className="h-12 w-auto object-contain" />
           </Link>
           <div className="flex items-center gap-2">
             <Button asChild variant="ghost" className="font-semibold">
@@ -65,8 +62,8 @@ export default function Login() {
       <div className="flex-1 flex items-center justify-center px-4">
         <div className="w-full max-w-md bg-white rounded-3xl shadow-sm p-8 border border-slate-200">
           <div className="text-center mb-10">
-            <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[#C05673] text-white mb-4">
-              <span className="font-black text-xl italic">V</span>
+            <div className="inline-flex items-center justify-center mb-4">
+              <img src={LogoImage} alt="MiVitrina Logo" className="h-16 w-auto object-contain" />
             </div>
             <h2 className="text-3xl font-black text-slate-900">Bienvenido</h2>
             <p className="text-slate-500">Ingresa tus datos para continuar.</p>

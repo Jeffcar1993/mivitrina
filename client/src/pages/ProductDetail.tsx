@@ -8,7 +8,7 @@ import { useCart } from "../context/cartContext";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CartSheet } from "@/components/cartSheet";
-import { LogoIcon } from "@/components/LogoIcon";
+import LogoImage from '../assets/Logo.webp';
 
 // Iconos
 import { 
@@ -66,13 +66,8 @@ export default function ProductDetail() {
       {/* Header Reutilizado */}
       <header className="sticky top-0 z-50 w-full border-b border-slate-200 bg-white/70 backdrop-blur-xl">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <Link to="/" className="flex items-center gap-2 group">
-            <div className="rounded-lg bg-[#C05673] p-1.5 transition-transform group-hover:scale-110">
-              <LogoIcon className="h-5 w-5 text-white" />
-            </div>
-            <h1 className="text-xl font-black tracking-tighter text-slate-900 leading-none">
-              MIVITRINA
-            </h1>
+          <Link to="/" className="flex items-center group">
+            <img src={LogoImage} alt="MiVitrina Logo" className="h-12 w-auto object-contain transition-transform group-hover:scale-110" />
           </Link>
           
           <div className="flex items-center gap-3">
