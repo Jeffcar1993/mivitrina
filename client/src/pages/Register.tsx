@@ -166,6 +166,12 @@ export default function Register() {
           </div>
         </div>
       </div>
+
+      <footer className="border-t border-slate-200 bg-white py-6">
+        <div className="container mx-auto px-4 text-center text-xs text-slate-400">
+          <p>© 2026 MiVitrina. Todos los derechos reservados.</p>
+        </div>
+      </footer>
     </div>
   );
 }

@@ -155,9 +155,9 @@ export default function App() {
 
       <main>
         {/* Hero Section Atractiva */}
-        <section className="relative overflow-hidden bg-white py-16 sm:py-24">
+        <section className="relative overflow-hidden bg-white py-8 sm:py-12">
           <div className="absolute inset-0 bg-[radial-gradient(#f1f5f9_1px,transparent_1px)] [background-size:20px_20px] [mask-image:radial-gradient(ellipse_50%_50%_at_50%_50%,#000_70%,transparent_100%)]" />
-          <div className="container relative mx-auto grid items-center gap-10 px-4 text-center lg:grid-cols-2 lg:text-left">
+          <div className="container relative mx-auto grid items-center gap-6 px-4 text-center lg:grid-cols-2 lg:text-left">
             <div>
               <Badge variant="secondary" className="mb-4 rounded-full px-4 py-1 text-[#9B5F71] bg-[#FDF6F8] border-[#EAD1D9]">
                 Confianza para comprar, impulso para vender
@@ -208,7 +208,7 @@ export default function App() {
           </div>
         </section>
 
-        <div id="productos" className="container mx-auto px-4 py-12">
+        <div id="productos" className="container mx-auto px-4 py-6">
           {/* Barra de utilidades */}
           <div className="mb-8 flex flex-col items-center justify-between gap-4 border-b border-slate-100 pb-8 sm:flex-row">
             <div>
@@ -333,7 +333,7 @@ export default function App() {
         </div>
       </main>
 
-      <footer className="border-t border-slate-200 bg-white py-12 mt-12">
+      <footer className="border-t border-slate-200 bg-white py-8 mt-8">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
             <div className="space-y-3">
@@ -364,7 +364,7 @@ export default function App() {
             </div>
           </div>
 
-          <div className="mt-8 flex flex-col items-center justify-between gap-2 border-t border-slate-100 pt-6 text-xs text-slate-400 md:flex-row">
+          <div className="mt-4 flex flex-col items-center justify-between gap-2 border-t border-slate-100 pt-4 text-xs text-slate-400 md:flex-row">
             <p>© 2026 MiVitrina. Todos los derechos reservados.</p>
             <p>Hecho con amor y mucho café.</p>
           </div>
