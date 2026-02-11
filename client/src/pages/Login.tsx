@@ -37,10 +37,6 @@ export default function Login() {
     window.location.href = `${API_URL}/api/auth/google`;
   };
 
-  const handleFacebookLogin = () => {
-    window.location.href = `${API_URL}/api/auth/facebook`;
-  };
-
   return (
     <div className="min-h-screen flex flex-col bg-[#FBFBFB]">
       <header className="sticky top-0 z-10 w-full border-b border-slate-200 bg-white/80 backdrop-blur">
@@ -105,7 +101,7 @@ export default function Login() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3">
             <Button 
               type="button"
               variant="outline" 
@@ -120,18 +116,6 @@ export default function Login() {
               </svg>
               Google
             </Button>
-
-            <Button 
-              type="button"
-              variant="outline" 
-              onClick={handleFacebookLogin}
-              className="h-12 border-slate-300 hover:bg-slate-50"
-            >
-              <svg className="w-5 h-5 mr-2" fill="#1877F2" viewBox="0 0 24 24">
-                <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-              </svg>
-              Facebook
-            </Button>
           </div>
 
           <p className="mt-8 text-center text-slate-600">
@@ -143,9 +127,41 @@ export default function Login() {
         </div>
       </div>
 
-      <footer className="border-t border-slate-200 bg-white py-6">
-        <div className="container mx-auto px-4 text-center text-xs text-slate-400">
-          <p>© 2026 MiVitrina. Todos los derechos reservados.</p>
+      <footer className="border-t border-slate-200 bg-white py-8 mt-8">
+        <div className="container mx-auto px-4">
+          <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
+            <div className="space-y-3">
+              <div className="flex items-center">
+                <img src={LogoImage} alt="MiVitrina Logo" className="h-10 w-auto object-contain" />
+              </div>
+              <p className="text-sm text-slate-500">
+                Tu escaparate digital para comprar y vender productos de forma segura.
+              </p>
+            </div>
+
+            <div className="space-y-2 text-sm">
+              <p className="font-semibold text-slate-800">Explora</p>
+              <div className="flex flex-col gap-1 text-slate-500">
+                <Link to="/" className="hover:text-[#9B5F71]">Inicio</Link>
+                <Link to="/login" className="hover:text-[#9B5F71]">Ingresar</Link>
+                <Link to="/register" className="hover:text-[#9B5F71]">Crear cuenta</Link>
+              </div>
+            </div>
+
+            <div className="space-y-2 text-sm">
+              <p className="font-semibold text-slate-800">Soporte</p>
+              <div className="flex flex-col gap-1 text-slate-500">
+                <span>contacto@mivitrina.com</span>
+                <span>+57 300 000 0000</span>
+                <span>Atención 24/7</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-4 flex flex-col items-center justify-between gap-2 border-t border-slate-100 pt-4 text-xs text-slate-400 md:flex-row">
+            <p>© 2026 MiVitrina. Todos los derechos reservados.</p>
+            <p>Hecho con amor y mucho café.</p>
+          </div>
         </div>
       </footer>
     </div>

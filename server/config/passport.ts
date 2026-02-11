@@ -1,6 +1,5 @@
 import passport from 'passport';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
-import { Strategy as FacebookStrategy } from 'passport-facebook';
 import { query } from './db.js';
 
 // Configuración de estrategias OAuth
@@ -56,81 +55,6 @@ export function configurePassport() {
                   profile.displayName || email.split('@')[0],
                   email,
                   'google',
-                  profile.id,
-                  true,
-                  profile.photos?.[0]?.value || null,
-                ]
-              );
-              user = result.rows[0];
-            }
-          }
-
-          return done(null, user);
-        } catch (error) {
-          return done(error as Error);
-        }
-      }
-    )
-  );
-
-  // ==================== ESTRATEGIA FACEBOOK ====================
-  passport.use(
-    new FacebookStrategy(
-      {
-        clientID: process.env.FACEBOOK_APP_ID || '',
-        clientSecret: process.env.FACEBOOK_APP_SECRET || '',
-        callbackURL: process.env.FACEBOOK_CALLBACK_URL || 'http://localhost:3000/api/auth/facebook/callback',
-        profileFields: ['id', 'emails', 'name', 'picture.type(large)'],
-      },
-      async (_accessToken, _refreshToken, profile, done) => {
-        try {
-          const email = profile.emails?.[0]?.value;
-          if (!email) {
-            return done(new Error('No se pudo obtener el email de Facebook'));
-          }
-
-          // Buscar usuario existente por proveedor y provider_id
-          let result = await query(
-            'SELECT * FROM users WHERE provider = $1 AND provider_id = $2',
-            ['facebook', profile.id]
-          );
-
-          let user;
-          if (result.rows.length > 0) {
-            // Usuario ya existe
-            user = result.rows[0];
-          } else {
-            // Verificar si existe un usuario con ese email
-            const emailCheck = await query('SELECT * FROM users WHERE email = $1', [email]);
-            
-            if (emailCheck.rows.length > 0) {
-              // Email ya existe - actualizar a OAuth
-              result = await query(
-                `UPDATE users 
-                 SET provider = $1, provider_id = $2, email_verified = true,
-                     username = COALESCE(username, $3),
-                     profile_image = COALESCE(profile_image, $4)
-                 WHERE email = $5
-                 RETURNING *`,
-                [
-                  'facebook',
-                  profile.id,
-                  `${profile.name?.givenName || ''} ${profile.name?.familyName || ''}`.trim() || email.split('@')[0],
-                  profile.photos?.[0]?.value,
-                  email,
-                ]
-              );
-              user = result.rows[0];
-            } else {
-              // Crear nuevo usuario
-              result = await query(
-                `INSERT INTO users (username, email, provider, provider_id, email_verified, profile_image) 
-                 VALUES ($1, $2, $3, $4, $5, $6) 
-                 RETURNING *`,
-                [
-                  `${profile.name?.givenName || ''} ${profile.name?.familyName || ''}`.trim() || email.split('@')[0],
-                  email,
-                  'facebook',
                   profile.id,
                   true,
                   profile.photos?.[0]?.value || null,

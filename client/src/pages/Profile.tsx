@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Camera, Save, ShoppingBag, Package } from "lucide-react";
+import { ArrowLeft, Camera, Save, ShoppingBag, Package, Trash2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import api from '../lib/axios';
 import type { User } from '../types';
@@ -29,6 +29,8 @@ export default function Profile() {
   const [imageUploading, setImageUploading] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
+  const [deletingProfile, setDeletingProfile] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [formData, setFormData] = useState({
     username: '',
     email: '',
@@ -106,6 +108,33 @@ export default function Profile() {
     }
   };
 
+  const handleDeleteProfile = async () => {
+    if (!user) return;
+    
+    setDeletingProfile(true);
+    try {
+      await api.delete(`/api/user/${user.id}`);
+      
+      // Limpiar datos locales
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      
+      toast.success('Perfil eliminado correctamente');
+      
+      // Redirigir a login después de un breve delay
+      setTimeout(() => {
+        navigate('/login');
+        window.location.reload();
+      }, 1000);
+    } catch (err) {
+      toast.error('Error al eliminar el perfil');
+      console.error(err);
+    } finally {
+      setDeletingProfile(false);
+      setShowDeleteConfirm(false);
+    }
+  };
+
   if (!user) {
     return (
       <div className="flex h-screen w-full flex-col items-center justify-center bg-white">
@@ -114,6 +143,52 @@ export default function Profile() {
           <img src={LogoImage} alt="MiVitrina Logo" className="absolute h-16 w-16 object-contain" />
         </div>
         <p className="mt-4 animate-pulse text-sm font-medium text-slate-500">Cargando perfil...</p>
+      </div>
+    );
+  }
+
+  // Modal de confirmación para eliminar perfil
+  if (showDeleteConfirm) {
+    return (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <Card className="border-slate-200 max-w-md">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-red-600">
+              <AlertCircle className="h-5 w-5" />
+              Eliminar Perfil
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-slate-600">
+              ¿Estás seguro de que quieres eliminar tu perfil? Esta acción es irreversible.
+            </p>
+            <p className="text-sm text-slate-500">
+              Se eliminarán:
+            </p>
+            <ul className="text-sm text-slate-600 space-y-1 ml-4 list-disc">
+              <li>Tu cuenta de usuario</li>
+              <li>Todos tus datos personales</li>
+              <li>Tu historial de órdenes</li>
+            </ul>
+            <div className="flex gap-3 pt-4">
+              <Button 
+                onClick={() => setShowDeleteConfirm(false)}
+                variant="outline"
+                className="flex-1"
+                disabled={deletingProfile}
+              >
+                Cancelar
+              </Button>
+              <Button 
+                onClick={handleDeleteProfile}
+                className="flex-1 bg-red-600 hover:bg-red-700"
+                disabled={deletingProfile}
+              >
+                {deletingProfile ? "Eliminando..." : "Eliminar perfil"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -265,6 +340,21 @@ export default function Profile() {
                   disabled={loading || imageUploading}
                 >
                   Cancelar
+                </Button>
+              </div>
+            )}
+
+            {/* Delete Profile Button */}
+            {!editing && (
+              <div className="pt-4 border-t">
+                <Button 
+                  onClick={() => setShowDeleteConfirm(true)}
+                  variant="outline"
+                  className="w-full border-red-200 text-red-600 hover:bg-red-50"
+                  disabled={deletingProfile}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Eliminar mi perfil
                 </Button>
               </div>
             )}
