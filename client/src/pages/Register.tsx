@@ -5,19 +5,58 @@ import type { AxiosError } from 'axios';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Check, X, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import LogoImage from '../assets/Logo.webp';
+import { validatePassword, getPasswordStrengthLabel, getPasswordStrengthColor } from '../lib/passwordValidator';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
+interface FormData {
+  username: string;
+  email: string;
+  password: string;
+}
+
+// Componente para mostrar cada requisito de contraseña
+function RequirementItem({ met, text }: { met: boolean; text: string }) {
+  return (
+    <div className="flex items-center gap-2">
+      <div className={`${met ? 'text-green-600' : 'text-gray-400'}`}>
+        {met ? <Check size={16} /> : <X size={16} />}
+      </div>
+      <span className={`text-xs ${met ? 'text-green-700 font-medium' : 'text-gray-600'}`}>
+        {text}
+      </span>
+    </div>
+  );
+}
+
 export default function Register() {
-  const [formData, setFormData] = useState({ username: '', email: '', password: '' });
+  const [formData, setFormData] = useState<FormData>({ username: '', email: '', password: '' });
   const [loading, setLoading] = useState(false);
+  const [passwordValidation, setPasswordValidation] = useState(validatePassword(''));
+  const [showPasswordRequirements, setShowPasswordRequirements] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
+
+  const handlePasswordChange = (password: string) => {
+    setFormData({...formData, password});
+    const validation = validatePassword(password);
+    setPasswordValidation(validation);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validar que la contraseña sea segura
+    if (!passwordValidation.isValid) {
+      toast.error("Contraseña no segura", { 
+        description: "Por favor, cumple con todos los requisitos de seguridad." 
+      });
+      return;
+    }
+
     setLoading(true);
     try {
       const res = await api.post('/auth/register', formData);
@@ -126,16 +165,77 @@ export default function Register() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="password">Contraseña</Label>
-                <Input 
-                  id="password"
-                  type="password" 
-                  placeholder="••••••••" 
-                  required 
-                  onChange={(e) => setFormData({...formData, password: e.target.value})}
-                />
+                <div className="relative">
+                  <Input 
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="••••••••" 
+                    required 
+                    value={formData.password}
+                    onChange={(e) => handlePasswordChange(e.target.value)}
+                    onFocus={() => setShowPasswordRequirements(true)}
+                    onBlur={() => setShowPasswordRequirements(false)}
+                    className={formData.password ? (passwordValidation.isValid ? 'border-green-500' : 'border-red-500') : ''}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700 transition-colors"
+                  >
+                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  </button>
+                </div>
+                
+                {/* Indicador de fortaleza */}
+                {formData.password && (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 bg-gray-200 rounded-full h-2 overflow-hidden">
+                        <div 
+                          className={`h-full transition-all duration-300 ${getPasswordStrengthColor(passwordValidation.score)}`}
+                          style={{ width: `${(passwordValidation.score / 5) * 100}%` }}
+                        />
+                      </div>
+                      <span className="text-xs font-semibold text-gray-600 min-w-fit">
+                        {getPasswordStrengthLabel(passwordValidation.score)}
+                      </span>
+                    </div>
+
+                    {/* Lista de requisitos */}
+                    {(showPasswordRequirements || !passwordValidation.isValid) && (
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 space-y-2">
+                        <p className="text-xs font-semibold text-blue-900 mb-2">Requisitos de seguridad:</p>
+                        <RequirementItem 
+                          met={formData.password.length >= 8} 
+                          text="Mínimo 8 caracteres" 
+                        />
+                        <RequirementItem 
+                          met={/[A-Z]/.test(formData.password)} 
+                          text="Una mayúscula (A-Z)" 
+                        />
+                        <RequirementItem 
+                          met={/[a-z]/.test(formData.password)} 
+                          text="Una minúscula (a-z)" 
+                        />
+                        <RequirementItem 
+                          met={/[0-9]/.test(formData.password)} 
+                          text="Un número (0-9)" 
+                        />
+                        <RequirementItem 
+                          met={/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(formData.password)} 
+                          text="Un carácter especial (!@#$%^& etc)" 
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
-              <Button type="submit" className="w-full bg-[#C05673] hover:bg-[#B04B68] text-white h-12 text-lg font-bold" disabled={loading}>
+              <Button 
+                type="submit" 
+                className="w-full bg-[#C05673] hover:bg-[#B04B68] text-white h-12 text-lg font-bold disabled:opacity-50 disabled:cursor-not-allowed" 
+                disabled={loading || (formData.password ? !passwordValidation.isValid : false)}
+              >
                 {loading ? "Creando cuenta..." : "Registrarse ahora"}
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>

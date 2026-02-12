@@ -55,6 +55,12 @@ export default function PaymentConfirmation() {
         // 2. Si la confirmación fue exitosa, limpiamos el carrito
         clearCart(); 
         setIsCleared(true); // Marcamos como limpio
+        
+        // 3. Disparar evento personalizado para que otras páginas lo escuchen (como Profile)
+        window.dispatchEvent(new CustomEvent('purchaseCompleted', { 
+          detail: { timestamp: Date.now() } 
+        }));
+        
         console.log("✅ Carrito limpiado y pago confirmado");
       }
 

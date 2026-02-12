@@ -20,6 +20,12 @@ interface Order {
   created_at: string;
 }
 
+interface Product {
+  id: number;
+  name: string;
+  user_id: number;
+}
+
 export default function Profile() {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -28,6 +34,7 @@ export default function Profile() {
   const [loading, setLoading] = useState(false);
   const [imageUploading, setImageUploading] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
   const [deletingProfile, setDeletingProfile] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -57,6 +64,7 @@ export default function Profile() {
     });
 
     fetchUserOrders();
+    fetchUserProducts();
   }, [navigate]);
 
   const fetchUserOrders = async () => {
@@ -70,6 +78,51 @@ export default function Profile() {
       setLoadingOrders(false);
     }
   };
+
+  const fetchUserProducts = async () => {
+    try {
+      const response = await api.get('/products');
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      // Filtrar solo los productos del usuario actual
+      const userProducts = response.data.filter((product: Product) => product.user_id === user.id);
+      setProducts(userProducts);
+    } catch (error) {
+      console.error('Error al cargar productos:', error);
+    }
+  };
+
+  // Escuchar cambios en localStorage y eventos de producto/compra
+  useEffect(() => {
+    const handleStorageChange = () => {
+      fetchUserProducts();
+      fetchUserOrders();
+    };
+
+    const handleProductPublished = () => {
+      console.log('Producto publicado, refrescando lista de productos...');
+      fetchUserProducts();
+    };
+
+    const handlePurchaseCompleted = () => {
+      console.log('Compra completada, refrescando lista de órdenes...');
+      fetchUserOrders();
+    };
+
+    // Escuchar cambios en el storage
+    window.addEventListener('storage', handleStorageChange);
+    
+    // Escuchar evento personalizado de producto publicado
+    window.addEventListener('productPublished', handleProductPublished);
+    
+    // Escuchar evento personalizado de compra completada
+    window.addEventListener('purchaseCompleted', handlePurchaseCompleted);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('productPublished', handleProductPublished);
+      window.removeEventListener('purchaseCompleted', handlePurchaseCompleted);
+    };
+  }, []);
 
   const handleImageUpload = async (file: File) => {
     setImageUploading(true);
@@ -194,16 +247,35 @@ export default function Profile() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FBFBFB] py-8">
-      <div className="container mx-auto px-4">
-        {/* Header */}
-        <button
-          onClick={() => navigate(-1)}
-          className="mb-6 flex items-center gap-2 text-[#C05673] hover:text-[#B04B68] transition-colors"
-        >
-          <ArrowLeft className="h-5 w-5" />
-          Volver
-        </button>
+    <div className="min-h-screen flex flex-col bg-[#FBFBFB]">
+      {/* Header */}
+      <header className="sticky top-0 z-10 w-full border-b border-slate-200 bg-white/80 backdrop-blur">
+        <div className="container mx-auto flex h-16 items-center justify-between px-4">
+          <Link to="/" className="flex items-center hover:opacity-80 transition-opacity">
+            <img src={LogoImage} alt="MiVitrina Logo" className="h-12 w-auto object-contain" />
+          </Link>
+          <div className="flex items-center gap-2">
+            <Button asChild variant="ghost" className="font-semibold">
+              <Link to="/profile">Perfil</Link>
+            </Button>
+            <Button asChild variant="outline" className="font-semibold border-[#EACED7] text-[#9B5F71] hover:bg-[#FDF6F8]">
+              <Link to="/">Inicio</Link>
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <div className="flex-1">
+        <div className="container mx-auto px-4 py-8">
+          {/* Back Button */}
+          <button
+            onClick={() => navigate(-1)}
+            className="mb-6 flex items-center gap-2 text-[#C05673] hover:text-[#B04B68] transition-colors"
+          >
+            <ArrowLeft className="h-5 w-5" />
+            Volver
+          </button>
 
         {/* Profile Card */}
         <Card className="border-slate-200 mb-8">
@@ -362,7 +434,7 @@ export default function Profile() {
             {/* User Stats */}
             <div className="grid grid-cols-2 gap-4 pt-4 border-t">
               <div className="text-center p-4 bg-blue-50 rounded-lg">
-                <p className="text-3xl font-black text-blue-600">0</p>
+                <p className="text-3xl font-black text-blue-600">{products.length}</p>
                 <p className="text-sm text-slate-600 mt-1">Productos publicados</p>
               </div>
               <div className="text-center p-4 bg-green-50 rounded-lg">
@@ -458,7 +530,47 @@ export default function Profile() {
             </div>
           )}
         </div>
+        </div>
       </div>
+
+      {/* Footer */}
+      <footer className="border-t border-slate-200 bg-white py-8 mt-8">
+        <div className="container mx-auto px-4">
+          <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
+            <div className="space-y-3">
+              <div className="flex items-center">
+                <img src={LogoImage} alt="MiVitrina Logo" className="h-10 w-auto object-contain" />
+              </div>
+              <p className="text-sm text-slate-500">
+                Tu escaparate digital para comprar y vender productos de forma segura.
+              </p>
+            </div>
+
+            <div className="space-y-2 text-sm">
+              <p className="font-semibold text-slate-800">Explora</p>
+              <div className="flex flex-col gap-1 text-slate-500">
+                <Link to="/" className="hover:text-[#9B5F71]">Inicio</Link>
+                <Link to="/login" className="hover:text-[#9B5F71]">Ingresar</Link>
+                <Link to="/register" className="hover:text-[#9B5F71]">Crear cuenta</Link>
+              </div>
+            </div>
+
+            <div className="space-y-2 text-sm">
+              <p className="font-semibold text-slate-800">Soporte</p>
+              <div className="flex flex-col gap-1 text-slate-500">
+                <span>contacto@mivitrina.com</span>
+                <span>+57 300 000 0000</span>
+                <span>Atención 24/7</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-4 flex flex-col items-center justify-between gap-2 border-t border-slate-100 pt-4 text-xs text-slate-400 md:flex-row">
+            <p>© 2026 MiVitrina. Todos los derechos reservados.</p>
+            <p>Hecho con amor y mucho café.</p>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

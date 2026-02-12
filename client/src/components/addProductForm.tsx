@@ -93,6 +93,13 @@ export function AddProductForm({ onProductAdded }: AddProductFormProps) {
       setOpen(false); // Cerramos el modal
       onProductAdded(); // Refrescamos la lista de la página principal
       
+      // Disparar evento personalizado para que otras páginas lo escuchen (como Profile)
+      window.dispatchEvent(new CustomEvent('productPublished', { 
+        detail: { timestamp: Date.now() } 
+      }));
+      
+      toast.success('Producto publicado correctamente');
+      
       // Limpiamos el formulario (opcional si el modal se destruye)
       (e.target as HTMLFormElement).reset();
       

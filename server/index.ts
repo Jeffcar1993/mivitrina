@@ -21,6 +21,37 @@ dotenv.config();
 const app = express();
 const JWT_SECRET = process.env.JWT_SECRET || 'tu-secreto-super-seguro-cambiar-en-produccion';
 
+// Función para validar contraseña segura
+const validatePassword = (password: string): { isValid: boolean; errors: string[] } => {
+  const errors: string[] = [];
+
+  if (password.length < 8) {
+    errors.push("Mínimo 8 caracteres");
+  }
+
+  if (!/[A-Z]/.test(password)) {
+    errors.push("Al menos una mayúscula");
+  }
+
+  if (!/[a-z]/.test(password)) {
+    errors.push("Al menos una minúscula");
+  }
+
+  if (!/[0-9]/.test(password)) {
+    errors.push("Al menos un número");
+  }
+
+  const specialChars = '!@#$%^&*()_+=-[]{};\':"`\\|,.<>/?';
+  if (![...specialChars].some(char => password.includes(char))) {
+    errors.push("Al menos un carácter especial");
+  }
+
+  return {
+    isValid: errors.length === 0,
+    errors
+  };
+};
+
 // Configurar Passport
 configurePassport();
 
@@ -76,6 +107,15 @@ app.post('/api/auth/register', async (req, res) => {
   try {
     if (!username || !email || !password) {
       return res.status(400).json({ error: "Completa todos los campos" });
+    }
+
+    // Validar que la contraseña sea segura
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.isValid) {
+      return res.status(400).json({ 
+        error: "La contraseña no cumple con los requisitos de seguridad",
+        requirements: passwordValidation.errors
+      });
     }
 
     const existing = await query(
@@ -178,10 +218,10 @@ app.put('/api/user/profile', authMiddleware, async (req: AuthRequest, res: Respo
 app.delete('/api/user/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.userId;
-    const { id } = req.params;
+    const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
 
     // Verificar que el usuario está intentando eliminar su propio perfil
-    if (parseInt(id) !== userId) {
+    if (!id || parseInt(id) !== userId) {
       return res.status(403).json({ error: "No tienes permiso para eliminar este perfil" });
     }
 
