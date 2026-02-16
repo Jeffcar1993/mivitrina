@@ -6,6 +6,22 @@ import { authMiddleware, type AuthRequest } from '../middleware/auth.js';
 
 const router = Router();
 
+const ensureSellerRatingsTable = async (): Promise<void> => {
+  await query(`
+    CREATE TABLE IF NOT EXISTS seller_ratings (
+      id SERIAL PRIMARY KEY,
+      seller_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+      buyer_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+      rating INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(seller_id, buyer_id)
+    )
+  `);
+
+  await query('CREATE INDEX IF NOT EXISTS idx_seller_ratings_seller_id ON seller_ratings(seller_id)');
+};
+
 // Usamos Promise<void> porque la función no retorna un valor, sino que responde al cliente
 router.post('/', authMiddleware, upload.array('images', 4), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
@@ -97,6 +113,176 @@ router.get('/', async (_req: Request, res: Response): Promise<void> => {
   } catch (error) {
     console.error("Error al obtener productos:", error);
     res.status(500).json({ error: "Error al obtener la lista de productos" });
+  }
+});
+
+// Obtener resumen de calificaciones del vendedor de un producto
+router.get('/:id/seller-rating', async (req: Request, res: Response): Promise<void> => {
+  try {
+    await ensureSellerRatingsTable();
+
+    const { id } = req.params;
+
+    const sellerQuery = await query('SELECT user_id FROM products WHERE id = $1', [id]);
+
+    if (sellerQuery.rows.length === 0) {
+      res.status(404).json({ error: 'Producto no encontrado' });
+      return;
+    }
+
+    const sellerId = Number(sellerQuery.rows[0].user_id);
+
+    if (!sellerId) {
+      res.status(400).json({ error: 'El producto no tiene vendedor asociado' });
+      return;
+    }
+
+    const summaryQuery = await query(
+      `
+      SELECT
+        COALESCE(AVG(rating)::numeric, 0) AS average_rating,
+        COUNT(*)::int AS total_ratings
+      FROM seller_ratings
+      WHERE seller_id = $1
+      `,
+      [sellerId]
+    );
+
+    const averageRating = Number(summaryQuery.rows[0]?.average_rating || 0);
+    const totalRatings = Number(summaryQuery.rows[0]?.total_ratings || 0);
+
+    res.json({
+      sellerId,
+      averageRating,
+      totalRatings,
+    });
+  } catch (error) {
+    console.error('Error al obtener rating del vendedor:', error);
+    res.status(500).json({ error: 'Error al obtener calificaciones del vendedor' });
+  }
+});
+
+// Obtener la calificación del usuario autenticado para el vendedor de un producto
+router.get('/:id/seller-rating/my', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    await ensureSellerRatingsTable();
+
+    const { id } = req.params;
+    const buyerId = req.userId;
+
+    if (!buyerId) {
+      res.status(401).json({ error: 'Debes iniciar sesión para ver tu calificación' });
+      return;
+    }
+
+    const sellerQuery = await query('SELECT user_id FROM products WHERE id = $1', [id]);
+
+    if (sellerQuery.rows.length === 0) {
+      res.status(404).json({ error: 'Producto no encontrado' });
+      return;
+    }
+
+    const sellerId = Number(sellerQuery.rows[0].user_id);
+
+    if (!sellerId) {
+      res.status(400).json({ error: 'El producto no tiene vendedor asociado' });
+      return;
+    }
+
+    const myRatingQuery = await query(
+      `
+      SELECT rating
+      FROM seller_ratings
+      WHERE seller_id = $1 AND buyer_id = $2
+      LIMIT 1
+      `,
+      [sellerId, buyerId]
+    );
+
+    const myRating = myRatingQuery.rows.length > 0 ? Number(myRatingQuery.rows[0].rating) : null;
+
+    res.json({
+      sellerId,
+      myRating,
+    });
+  } catch (error) {
+    console.error('Error al obtener mi rating:', error);
+    res.status(500).json({ error: 'Error al obtener tu calificación' });
+  }
+});
+
+// Crear o actualizar calificación del vendedor de un producto
+router.post('/:id/seller-rating', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    await ensureSellerRatingsTable();
+
+    const { id } = req.params;
+    const buyerId = req.userId;
+    const rating = Number(req.body?.rating);
+
+    if (!buyerId) {
+      res.status(401).json({ error: 'Debes iniciar sesión para calificar' });
+      return;
+    }
+
+    if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+      res.status(400).json({ error: 'La calificación debe ser un número entero entre 1 y 5' });
+      return;
+    }
+
+    const sellerQuery = await query('SELECT user_id FROM products WHERE id = $1', [id]);
+
+    if (sellerQuery.rows.length === 0) {
+      res.status(404).json({ error: 'Producto no encontrado' });
+      return;
+    }
+
+    const sellerId = Number(sellerQuery.rows[0].user_id);
+
+    if (!sellerId) {
+      res.status(400).json({ error: 'El producto no tiene vendedor asociado' });
+      return;
+    }
+
+    if (sellerId === buyerId) {
+      res.status(400).json({ error: 'No puedes calificar tus propios productos' });
+      return;
+    }
+
+    await query(
+      `
+      INSERT INTO seller_ratings (seller_id, buyer_id, rating)
+      VALUES ($1, $2, $3)
+      ON CONFLICT (seller_id, buyer_id)
+      DO UPDATE SET rating = EXCLUDED.rating, updated_at = CURRENT_TIMESTAMP
+      `,
+      [sellerId, buyerId, rating]
+    );
+
+    const summaryQuery = await query(
+      `
+      SELECT
+        COALESCE(AVG(rating)::numeric, 0) AS average_rating,
+        COUNT(*)::int AS total_ratings
+      FROM seller_ratings
+      WHERE seller_id = $1
+      `,
+      [sellerId]
+    );
+
+    const averageRating = Number(summaryQuery.rows[0]?.average_rating || 0);
+    const totalRatings = Number(summaryQuery.rows[0]?.total_ratings || 0);
+
+    res.json({
+      message: 'Calificación guardada correctamente',
+      sellerId,
+      myRating: rating,
+      averageRating,
+      totalRatings,
+    });
+  } catch (error) {
+    console.error('Error al guardar rating:', error);
+    res.status(500).json({ error: 'Error al guardar la calificación' });
   }
 });
 

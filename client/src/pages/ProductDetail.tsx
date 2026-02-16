@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import api from "../lib/axios";
 import type { Product } from "../types";
@@ -18,7 +18,10 @@ import {
   ShieldCheck, 
   Truck, 
   RefreshCcw,
-  Loader2
+  Loader2,
+  Star,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 
 export default function ProductDetail() {
@@ -27,23 +30,110 @@ export default function ProductDetail() {
   const { addToCart } = useCart();
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [sellerAverageRating, setSellerAverageRating] = useState(0);
+  const [sellerRatingsCount, setSellerRatingsCount] = useState(0);
+  const [mySellerRating, setMySellerRating] = useState(0);
+  const [ratingSubmitting, setRatingSubmitting] = useState(false);
+
+  const productImages = useMemo(() => {
+    if (!product) return [];
+    const images = [product.image_url, ...(product.images ?? [])].filter(Boolean);
+    return Array.from(new Set(images));
+  }, [product]);
+
+  const selectedImage = productImages[currentImageIndex] ?? product?.image_url;
+  const sellerId = product?.seller_id ?? product?.user_id;
+
+  const fetchSellerRating = useCallback(async () => {
+    if (!id) return;
+
+    try {
+      const summaryRes = await api.get(`/products/${id}/seller-rating`);
+      setSellerAverageRating(Number(summaryRes.data?.averageRating ?? 0));
+      setSellerRatingsCount(Number(summaryRes.data?.totalRatings ?? 0));
+
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setMySellerRating(0);
+        return;
+      }
+
+      try {
+        const myRatingRes = await api.get(`/products/${id}/seller-rating/my`);
+        setMySellerRating(Number(myRatingRes.data?.myRating ?? 0));
+      } catch {
+        setMySellerRating(0);
+      }
+    } catch (error) {
+      console.error("Error al obtener calificaciones del vendedor:", error);
+      setSellerAverageRating(0);
+      setSellerRatingsCount(0);
+      setMySellerRating(0);
+    }
+  }, [id]);
 
   useEffect(() => {
     api.get(`/products/${id}`)
-      .then((res) => {
+      .then(async (res) => {
         const data = res.data as Product;
         setProduct(data);
-        const images = data.images && data.images.length > 0
-          ? [data.image_url, ...data.images]
-          : [data.image_url];
-        setSelectedImage(images[0]);
+        setCurrentImageIndex(0);
+
+        await fetchSellerRating();
       })
       .catch((err) => {
         console.error("Error al obtener el producto:", err);
       })
       .finally(() => setLoading(false));
-  }, [id]);
+  }, [id, fetchSellerRating]);
+
+  const changeImage = (direction: "prev" | "next") => {
+    if (productImages.length <= 1) return;
+
+    if (direction === "prev") {
+      setCurrentImageIndex((prev) =>
+        prev === 0 ? productImages.length - 1 : prev - 1
+      );
+      return;
+    }
+
+    setCurrentImageIndex((prev) =>
+      prev === productImages.length - 1 ? 0 : prev + 1
+    );
+  };
+
+  const handleRateSeller = (rating: number) => {
+    if (!sellerId) return;
+
+    const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
+    const currentUserId = currentUser?.id ? String(currentUser.id) : "";
+
+    if (!currentUserId) {
+      alert("Debes iniciar sesión para calificar al vendedor.");
+      return;
+    }
+
+    if (currentUser.id === sellerId) {
+      alert("No puedes calificar tus propios productos.");
+      return;
+    }
+
+    if (!id) return;
+
+    setRatingSubmitting(true);
+    api.post(`/products/${id}/seller-rating`, { rating })
+      .then((res) => {
+        setMySellerRating(Number(res.data?.myRating ?? rating));
+        setSellerAverageRating(Number(res.data?.averageRating ?? 0));
+        setSellerRatingsCount(Number(res.data?.totalRatings ?? 0));
+      })
+      .catch((error) => {
+        const message = error?.response?.data?.error || "No se pudo guardar la calificación.";
+        alert(message);
+      })
+      .finally(() => setRatingSubmitting(false));
+  };
 
   if (loading) return (
     <div className="flex h-screen w-full flex-col items-center justify-center bg-white">
@@ -100,16 +190,40 @@ export default function ProductDetail() {
                 alt={product.title} 
                 className="w-full h-auto min-h-[400px] object-cover transition-transform duration-1000 group-hover:scale-105"
               />
+
+              {productImages.length > 1 && (
+                <>
+                  <Button
+                    variant="secondary"
+                    size="icon"
+                    onClick={() => changeImage("prev")}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-white/90 hover:bg-white"
+                    aria-label="Imagen anterior"
+                  >
+                    <ChevronLeft className="h-5 w-5" />
+                  </Button>
+
+                  <Button
+                    variant="secondary"
+                    size="icon"
+                    onClick={() => changeImage("next")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white/90 hover:bg-white"
+                    aria-label="Siguiente imagen"
+                  >
+                    <ChevronRight className="h-5 w-5" />
+                  </Button>
+                </>
+              )}
             </div>
 
-            {product.images && product.images.length > 0 && (
+            {productImages.length > 1 && (
               <div className="grid grid-cols-4 gap-3">
-                {[product.image_url, ...product.images].map((img, idx) => (
+                {productImages.map((img, idx) => (
                   <button
                     key={`${img}-${idx}`}
-                    onClick={() => setSelectedImage(img)}
+                    onClick={() => setCurrentImageIndex(idx)}
                     className={`aspect-square rounded-xl overflow-hidden ring-2 transition-all ${
-                      img === selectedImage ? "ring-[#C05673]" : "ring-slate-100 hover:ring-[#EAD1D9]"
+                      idx === currentImageIndex ? "ring-[#C05673]" : "ring-slate-100 hover:ring-[#EAD1D9]"
                     }`}
                   >
                     <img src={img} alt={`${product.title} ${idx + 1}`} className="h-full w-full object-cover" />
@@ -166,6 +280,35 @@ export default function ProductDetail() {
                   <div>
                     <p className="text-lg font-bold text-slate-800">{product.seller_username}</p>
                     <p className="text-sm text-slate-500">Vendedor verificado</p>
+
+                    <div className="mt-2 flex items-center gap-2">
+                      <div className="flex items-center gap-1">
+                      {Array.from({ length: 5 }).map((_, index) => {
+                        const starValue = index + 1;
+                        const isActive = mySellerRating >= starValue;
+
+                        return (
+                          <button
+                            key={`my-star-${starValue}`}
+                            onClick={() => handleRateSeller(starValue)}
+                            className="rounded p-0.5 transition hover:scale-110 disabled:opacity-50"
+                            aria-label={`Calificar con ${starValue} estrellas`}
+                            type="button"
+                            disabled={ratingSubmitting}
+                          >
+                            <Star
+                              className={`h-4 w-4 ${isActive ? "fill-[#C05673] text-[#C05673]" : "text-slate-300"}`}
+                            />
+                          </button>
+                        );
+                      })}
+                      </div>
+                      <span className="text-xs font-medium text-slate-500">
+                        {sellerRatingsCount > 0
+                          ? `Promedio ${sellerAverageRating.toFixed(1)} (${sellerRatingsCount})`
+                          : "Sin calificaciones"}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>

@@ -12,6 +12,17 @@ CREATE TABLE IF NOT EXISTS users (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Tabla de calificaciones de vendedores
+CREATE TABLE IF NOT EXISTS seller_ratings (
+  id SERIAL PRIMARY KEY,
+  seller_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  buyer_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  rating INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(seller_id, buyer_id)
+);
+
 -- Tabla de categorías
 CREATE TABLE IF NOT EXISTS categories (
   id SERIAL PRIMARY KEY,
