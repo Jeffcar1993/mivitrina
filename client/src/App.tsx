@@ -9,9 +9,10 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "./componen
 import { Button } from "./components/ui/button";
 import { Badge } from "./components/ui/badge";
 import { Input } from "./components/ui/input";
+import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "./components/ui/sheet";
 
 // Iconos y Componente personalizado
-import { ShoppingCart, Trash2, LogOut, User, Plus, Search } from "lucide-react";
+import { ShoppingCart, Trash2, LogOut, User, Plus, Search, Menu } from "lucide-react";
 import { AddProductForm } from "./components/addProductForm";
 import { CartSheet } from './components/cartSheet';
 import { Footer } from './components/Footer';
@@ -24,6 +25,7 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
 
   const filteredProducts = products.filter((product) => {
     const matchesCategory =
@@ -95,6 +97,7 @@ export default function App() {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     setIsAuthenticated(false);
+    setMobileMenuOpen(false);
     window.location.reload();
   };
 
@@ -119,7 +122,7 @@ export default function App() {
             <img src={LogoImage} alt="MiVitrina Logo" className="h-14 w-auto object-contain" />
           </div>
           
-          <div className="flex items-center gap-2">
+          <div className="hidden md:flex items-center gap-2">
             {!isAuthenticated ? (
               <>
                 <Link to="/login" className="h-10 flex items-center bg-[#C05673] hover:bg-[#B04B68] text-white font-semibold px-6 rounded-lg shadow-sm transition duration-300 ease-in-out">Login</Link>
@@ -150,6 +153,75 @@ export default function App() {
                 </Button>
               </>
             )}
+          </div>
+
+          <div className="flex md:hidden items-center gap-2">
+            <CartSheet />
+
+            <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-10 w-10 hover:bg-slate-100" aria-label="Abrir menú">
+                  <Menu className="h-6 w-6 text-slate-700" />
+                </Button>
+              </SheetTrigger>
+
+              <SheetContent side="right" className="w-[85%] max-w-sm bg-white">
+                <SheetHeader className="border-b border-slate-100 pb-4">
+                  <SheetTitle className="text-slate-900">Menú</SheetTitle>
+                </SheetHeader>
+
+                <div className="mt-6 flex flex-col gap-3">
+                  <SheetClose asChild>
+                    <Link to="/" className="rounded-lg border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                      Inicio
+                    </Link>
+                  </SheetClose>
+
+                  {!isAuthenticated ? (
+                    <>
+                      <SheetClose asChild>
+                        <Link to="/login" className="rounded-lg bg-[#C05673] px-4 py-3 text-sm font-semibold text-white hover:bg-[#B04B68] text-center">
+                          Login
+                        </Link>
+                      </SheetClose>
+
+                      <SheetClose asChild>
+                        <Link to="/register" className="rounded-lg border border-[#EACED7] px-4 py-3 text-sm font-semibold text-[#9B5F71] hover:bg-[#FDF6F8] text-center">
+                          Register
+                        </Link>
+                      </SheetClose>
+
+                      <SheetClose asChild>
+                        <Link to="/login" className="rounded-lg border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50 text-center">
+                          Publicar producto
+                        </Link>
+                      </SheetClose>
+                    </>
+                  ) : (
+                    <>
+                      <div className="py-1">
+                        <AddProductForm onProductAdded={fetchProducts} />
+                      </div>
+
+                      <SheetClose asChild>
+                        <Link to="/profile" className="rounded-lg border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50 text-center">
+                          Mi perfil
+                        </Link>
+                      </SheetClose>
+
+                      <Button
+                        onClick={handleLogout}
+                        variant="outline"
+                        className="justify-center border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                      >
+                        <LogOut className="mr-2 h-4 w-4" />
+                        Cerrar sesión
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </SheetContent>
+            </Sheet>
           </div>
         </div>
       </header>

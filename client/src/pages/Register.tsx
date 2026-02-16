@@ -5,7 +5,8 @@ import type { AxiosError } from 'axios';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowRight, Check, X, Eye, EyeOff } from "lucide-react";
+import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { ArrowRight, Check, X, Eye, EyeOff, Menu } from "lucide-react";
 import { toast } from "sonner";
 import LogoImage from '../assets/Logo.webp';
 import { Footer } from '../components/Footer';
@@ -39,6 +40,7 @@ export default function Register() {
   const [passwordValidation, setPasswordValidation] = useState(validatePassword(''));
   const [showPasswordRequirements, setShowPasswordRequirements] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
 
   const handlePasswordChange = (password: string) => {
@@ -85,13 +87,42 @@ export default function Register() {
           <Link to="/" className="flex items-center hover:opacity-80 transition-opacity">
             <img src={LogoImage} alt="MiVitrina Logo" className="h-12 w-auto object-contain" />
           </Link>
-          <div className="flex items-center gap-2">
+          <div className="hidden md:flex items-center gap-2">
             <Button asChild variant="ghost" className="font-semibold">
               <Link to="/login">Login</Link>
             </Button>
             <Button asChild variant="outline" className="font-semibold border-[#EACED7] text-[#9B5F71] hover:bg-[#FDF6F8]">
               <Link to="/">Inicio</Link>
             </Button>
+          </div>
+
+          <div className="flex md:hidden items-center gap-2">
+            <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-10 w-10 hover:bg-slate-100" aria-label="Abrir menú">
+                  <Menu className="h-6 w-6 text-slate-700" />
+                </Button>
+              </SheetTrigger>
+
+              <SheetContent side="right" className="w-[85%] max-w-sm bg-white">
+                <SheetHeader className="border-b border-slate-100 pb-4">
+                  <SheetTitle className="text-slate-900">Menú</SheetTitle>
+                </SheetHeader>
+
+                <div className="mt-6 flex flex-col gap-3">
+                  <SheetClose asChild>
+                    <Link to="/" className="rounded-lg border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                      Inicio
+                    </Link>
+                  </SheetClose>
+                  <SheetClose asChild>
+                    <Link to="/login" className="rounded-lg border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                      Iniciar sesión
+                    </Link>
+                  </SheetClose>
+                </div>
+              </SheetContent>
+            </Sheet>
           </div>
         </div>
       </header>

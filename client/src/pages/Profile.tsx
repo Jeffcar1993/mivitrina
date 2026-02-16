@@ -6,7 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Camera, Save, ShoppingBag, Package, Trash2, AlertCircle } from "lucide-react";
+import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { ArrowLeft, Camera, Save, ShoppingBag, Package, Trash2, AlertCircle, Menu, LogOut } from "lucide-react";
 import { toast } from "sonner";
 import api from '../lib/axios';
 import type { User } from '../types';
@@ -39,6 +40,7 @@ export default function Profile() {
   const [loadingOrders, setLoadingOrders] = useState(false);
   const [deletingProfile, setDeletingProfile] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [formData, setFormData] = useState({
     username: '',
     email: '',
@@ -189,6 +191,14 @@ export default function Profile() {
     }
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    setMobileMenuOpen(false);
+    navigate('/login');
+    window.location.reload();
+  };
+
   if (!user) {
     return (
       <div className="flex h-screen w-full flex-col items-center justify-center bg-white">
@@ -255,13 +265,50 @@ export default function Profile() {
           <Link to="/" className="flex items-center hover:opacity-80 transition-opacity">
             <img src={LogoImage} alt="MiVitrina Logo" className="h-12 w-auto object-contain" />
           </Link>
-          <div className="flex items-center gap-2">
+          <div className="hidden md:flex items-center gap-2">
             <Button asChild variant="ghost" className="font-semibold">
               <Link to="/profile">Perfil</Link>
             </Button>
             <Button asChild variant="outline" className="font-semibold border-[#EACED7] text-[#9B5F71] hover:bg-[#FDF6F8]">
               <Link to="/">Inicio</Link>
             </Button>
+          </div>
+
+          <div className="flex md:hidden items-center gap-2">
+            <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-10 w-10 hover:bg-slate-100" aria-label="Abrir menú">
+                  <Menu className="h-6 w-6 text-slate-700" />
+                </Button>
+              </SheetTrigger>
+
+              <SheetContent side="right" className="w-[85%] max-w-sm bg-white">
+                <SheetHeader className="border-b border-slate-100 pb-4">
+                  <SheetTitle className="text-slate-900">Menú</SheetTitle>
+                </SheetHeader>
+
+                <div className="mt-6 flex flex-col gap-3">
+                  <SheetClose asChild>
+                    <Link to="/" className="rounded-lg border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                      Inicio
+                    </Link>
+                  </SheetClose>
+                  <SheetClose asChild>
+                    <Link to="/profile" className="rounded-lg border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                      Mi perfil
+                    </Link>
+                  </SheetClose>
+                  <Button
+                    onClick={handleLogout}
+                    variant="outline"
+                    className="justify-center border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                  >
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Cerrar sesión
+                  </Button>
+                </div>
+              </SheetContent>
+            </Sheet>
           </div>
         </div>
       </header>

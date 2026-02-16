@@ -7,6 +7,7 @@ import { useCart } from "../context/cartContext";
 // Componentes de shadcn/ui
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { CartSheet } from "@/components/cartSheet";
 import { Footer } from "@/components/Footer";
 import LogoImage from '../assets/Logo.webp';
@@ -21,7 +22,8 @@ import {
   Loader2,
   Star,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Menu
 } from "lucide-react";
 
 export default function ProductDetail() {
@@ -35,6 +37,7 @@ export default function ProductDetail() {
   const [sellerRatingsCount, setSellerRatingsCount] = useState(0);
   const [mySellerRating, setMySellerRating] = useState(0);
   const [ratingSubmitting, setRatingSubmitting] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const productImages = useMemo(() => {
     if (!product) return [];
@@ -163,6 +166,40 @@ export default function ProductDetail() {
           
           <div className="flex items-center gap-3">
             <CartSheet />
+
+            <div className="md:hidden">
+              <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+                <SheetTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-10 w-10 hover:bg-slate-100" aria-label="Abrir menú">
+                    <Menu className="h-6 w-6 text-slate-700" />
+                  </Button>
+                </SheetTrigger>
+
+                <SheetContent side="right" className="w-[85%] max-w-sm bg-white">
+                  <SheetHeader className="border-b border-slate-100 pb-4">
+                    <SheetTitle className="text-slate-900">Menú</SheetTitle>
+                  </SheetHeader>
+
+                  <div className="mt-6 flex flex-col gap-3">
+                    <SheetClose asChild>
+                      <Link to="/" className="rounded-lg border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                        Inicio
+                      </Link>
+                    </SheetClose>
+                    <SheetClose asChild>
+                      <Link to="/profile" className="rounded-lg border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                        Mi perfil
+                      </Link>
+                    </SheetClose>
+                    <SheetClose asChild>
+                      <Link to="/checkout" className="rounded-lg border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                        Ir al checkout
+                      </Link>
+                    </SheetClose>
+                  </div>
+                </SheetContent>
+              </Sheet>
+            </div>
           </div>
         </div>
       </header>
