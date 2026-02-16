@@ -14,6 +14,7 @@ import { Input } from "./components/ui/input";
 import { ShoppingCart, Trash2, LogOut, User, Plus, Search } from "lucide-react";
 import { AddProductForm } from "./components/addProductForm";
 import { CartSheet } from './components/cartSheet';
+import { Footer } from './components/Footer';
 import LogoImage from './assets/Logo.webp';
 
 export default function App() {
@@ -333,43 +334,7 @@ export default function App() {
         </div>
       </main>
 
-      <footer className="border-t border-slate-200 bg-white py-8 mt-8">
-        <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
-            <div className="space-y-3">
-              <div className="flex items-center">
-                <img src={LogoImage} alt="MiVitrina Logo" className="h-10 w-auto object-contain" />
-              </div>
-              <p className="text-sm text-slate-500">
-                Tu escaparate digital para comprar y vender productos de forma segura.
-              </p>
-            </div>
-
-            <div className="space-y-2 text-sm">
-              <p className="font-semibold text-slate-800">Explora</p>
-              <div className="flex flex-col gap-1 text-slate-500">
-                <Link to="/" className="hover:text-[#9B5F71]">Inicio</Link>
-                <Link to="/login" className="hover:text-[#9B5F71]">Ingresar</Link>
-                <Link to="/register" className="hover:text-[#9B5F71]">Crear cuenta</Link>
-              </div>
-            </div>
-
-            <div className="space-y-2 text-sm">
-              <p className="font-semibold text-slate-800">Soporte</p>
-              <div className="flex flex-col gap-1 text-slate-500">
-                <span>contacto@mivitrina.com</span>
-                <span>+57 300 000 0000</span>
-                <span>Atención 24/7</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-4 flex flex-col items-center justify-between gap-2 border-t border-slate-100 pt-4 text-xs text-slate-400 md:flex-row">
-            <p>© 2026 MiVitrina. Todos los derechos reservados.</p>
-            <p>Hecho con amor y mucho café.</p>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

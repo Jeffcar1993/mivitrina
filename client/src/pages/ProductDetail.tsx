@@ -8,6 +8,7 @@ import { useCart } from "../context/cartContext";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CartSheet } from "@/components/cartSheet";
+import { Footer } from "@/components/Footer";
 import LogoImage from '../assets/Logo.webp';
 
 // Iconos
@@ -204,15 +205,7 @@ export default function ProductDetail() {
         </div>
       </main>
       
-      {/* Footer */}
-      <footer className="mt-20 border-t border-slate-200 bg-white py-10">
-        <div className="container mx-auto px-4">
-          <div className="flex flex-col items-center justify-between gap-2 text-xs text-slate-400 md:flex-row">
-            <p>© 2026 MiVitrina. Todos los derechos reservados.</p>
-            <p>Tu catálogo digital con estilo.</p>
-          </div>
-        </div>
-      </footer>
+      <Footer className="mt-20 py-10" />
     </div>
   );
 }
