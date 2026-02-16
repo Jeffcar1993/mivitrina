@@ -187,7 +187,7 @@ export default function App() {
                 <p className="text-sm font-semibold text-slate-700">Tendencias hoy</p>
                 <div className="mt-4 space-y-3">
                   {trendingCategories.length > 0 ? (
-                    trendingCategories.map((item) => (
+                    trendingCategories.slice(0, 3).map((item) => (
                       <button
                         key={item}
                         onClick={() => {
