@@ -60,6 +60,9 @@ CREATE TABLE IF NOT EXISTS orders (
   customer_address VARCHAR(255),
   customer_city VARCHAR(100),
   total_amount DECIMAL(10, 2) NOT NULL,
+  platform_fee_percentage DECIMAL(5, 2) DEFAULT 3.00 NOT NULL,
+  platform_fee_amount DECIMAL(10, 2) DEFAULT 0 NOT NULL,
+  seller_net_amount DECIMAL(10, 2) DEFAULT 0 NOT NULL,
   status VARCHAR(50) DEFAULT 'pending',
   payment_method VARCHAR(50) DEFAULT 'mercado_pago',
   payment_id VARCHAR(255),
@@ -77,6 +80,9 @@ CREATE TABLE IF NOT EXISTS order_items (
   quantity INTEGER DEFAULT 1,
   unit_price DECIMAL(10, 2) NOT NULL,
   subtotal DECIMAL(10, 2) NOT NULL,
+  platform_fee_percentage DECIMAL(5, 2) DEFAULT 3.00 NOT NULL,
+  platform_fee_amount DECIMAL(10, 2) DEFAULT 0 NOT NULL,
+  seller_net_amount DECIMAL(10, 2) DEFAULT 0 NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -93,6 +99,26 @@ CREATE TABLE IF NOT EXISTS payments (
   transaction_id VARCHAR(255),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Tabla de payouts manuales a vendedores
+CREATE TABLE IF NOT EXISTS seller_payouts (
+  id SERIAL PRIMARY KEY,
+  seller_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  total_amount DECIMAL(10, 2) NOT NULL,
+  status VARCHAR(50) DEFAULT 'pending',
+  notes TEXT,
+  created_by_user_id INTEGER REFERENCES users(id),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  processed_at TIMESTAMP
+);
+
+-- Relación entre payout e items de orden pagados al vendedor
+CREATE TABLE IF NOT EXISTS seller_payout_items (
+  id SERIAL PRIMARY KEY,
+  payout_id INTEGER REFERENCES seller_payouts(id) ON DELETE CASCADE,
+  order_item_id INTEGER UNIQUE REFERENCES order_items(id) ON DELETE CASCADE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Tabla de carrito de compras por usuario

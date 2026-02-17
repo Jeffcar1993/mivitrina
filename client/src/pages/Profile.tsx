@@ -14,6 +14,8 @@ import type { User } from '../types';
 import LogoImage from '../assets/Logo.webp';
 import { Footer } from '../components/Footer';
 
+const ADMIN_EMAIL = String(import.meta.env.VITE_ADMIN_EMAIL || '').trim().toLowerCase();
+
 interface Order {
   id: number;
   order_number: string;
@@ -48,6 +50,8 @@ export default function Profile() {
     phone: '',
     profile_image: ''
   });
+
+  const isAdminUser = Boolean(user?.email) && ADMIN_EMAIL.length > 0 && user!.email.toLowerCase() === ADMIN_EMAIL;
 
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
@@ -269,6 +273,11 @@ export default function Profile() {
             <Button asChild variant="ghost" className="font-semibold">
               <Link to="/profile">Perfil</Link>
             </Button>
+            {isAdminUser && (
+              <Button asChild variant="ghost" className="font-semibold">
+                <Link to="/finanzas">Finanzas</Link>
+              </Button>
+            )}
             <Button asChild variant="outline" className="font-semibold border-[#EACED7] text-[#9B5F71] hover:bg-[#FDF6F8]">
               <Link to="/">Inicio</Link>
             </Button>
@@ -298,6 +307,13 @@ export default function Profile() {
                       Mi perfil
                     </Link>
                   </SheetClose>
+                  {isAdminUser && (
+                    <SheetClose asChild>
+                      <Link to="/finanzas" className="rounded-lg border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                        Finanzas
+                      </Link>
+                    </SheetClose>
+                  )}
                   <Button
                     onClick={handleLogout}
                     variant="outline"

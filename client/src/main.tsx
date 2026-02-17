@@ -17,6 +17,7 @@ const AuthCallback = lazy(() => import('./pages/AuthCallback.tsx'))
 const TermsAndConditions = lazy(() => import('./pages/TermsAndConditions.tsx'))
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy.tsx'))
 const CookiesPolicy = lazy(() => import('./pages/CookiesPolicy.tsx'))
+const Finance = lazy(() => import('./pages/Finance.tsx'))
 const NotFound = lazy(() => import('./pages/NotFound.tsx'))
 const HowItWorks = lazy(() => import('./pages/HowItWorks.tsx'))
 const SellInfo = lazy(() => import('./pages/SellInfo.tsx'))
@@ -68,6 +69,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
               <Route path="/terminos-y-condiciones" element={<TermsAndConditions />} />
               <Route path="/politica-de-privacidad" element={<PrivacyPolicy />} />
               <Route path="/politica-de-cookies" element={<CookiesPolicy />} />
+              <Route path="/finanzas" element={<Finance />} />
               <Route path="/como-funciona" element={<HowItWorks />} />
               <Route path="/info-vender" element={<SellInfo />} />
               <Route path="/info-comprar" element={<BuyInfo />} />
