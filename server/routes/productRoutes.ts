@@ -92,7 +92,35 @@ router.post('/', authMiddleware, upload.array('images', 4), async (req: AuthRequ
 // RUTA PARA OBTENER TODOS LOS PRODUCTOS
 router.get('/', async (_req: Request, res: Response): Promise<void> => {
   try {
-    // Usamos un JOIN para traer el nombre de la categoría también
+    const pageParam = Number(_req.query.page);
+    const limitParam = Number(_req.query.limit);
+    const hasPagination = Number.isFinite(pageParam) || Number.isFinite(limitParam);
+
+    const parsedPage = Number.isFinite(pageParam) && pageParam > 0 ? Math.floor(pageParam) : 1;
+    const parsedLimit = Number.isFinite(limitParam) && limitParam > 0 ? Math.min(Math.floor(limitParam), 100) : 24;
+    const offset = (parsedPage - 1) * parsedLimit;
+
+    // Respuesta legacy sin paginación para no romper pantallas existentes
+    if (!hasPagination) {
+      const sql = `
+        SELECT 
+          p.*, 
+          c.name as category_name,
+          u.id as seller_id,
+          u.username as seller_username,
+          u.profile_image as seller_profile_image
+        FROM products p
+        JOIN categories c ON p.category_id = c.id
+        LEFT JOIN users u ON p.user_id = u.id
+        WHERE p.quantity > 0
+        ORDER BY p.created_at DESC
+      `;
+
+      const result = await query(sql);
+      res.json(result.rows);
+      return;
+    }
+
     const sql = `
       SELECT 
         p.*, 
@@ -105,11 +133,33 @@ router.get('/', async (_req: Request, res: Response): Promise<void> => {
       LEFT JOIN users u ON p.user_id = u.id
       WHERE p.quantity > 0
       ORDER BY p.created_at DESC
+      LIMIT $1 OFFSET $2
     `;
-    
-    const result = await query(sql);
-    
-    res.json(result.rows);
+
+    const countSql = `
+      SELECT COUNT(*)::int as total
+      FROM products p
+      WHERE p.quantity > 0
+    `;
+
+    const [result, countResult] = await Promise.all([
+      query(sql, [parsedLimit, offset]),
+      query(countSql),
+    ]);
+
+    const total = Number(countResult.rows[0]?.total || 0);
+    const totalPages = Math.max(1, Math.ceil(total / parsedLimit));
+
+    res.json({
+      items: result.rows,
+      pagination: {
+        page: parsedPage,
+        limit: parsedLimit,
+        total,
+        totalPages,
+        hasNextPage: parsedPage < totalPages,
+      },
+    });
   } catch (error) {
     console.error("Error al obtener productos:", error);
     res.status(500).json({ error: "Error al obtener la lista de productos" });

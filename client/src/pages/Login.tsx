@@ -51,7 +51,7 @@ export default function Login() {
           </Link>
           <div className="hidden md:flex items-center gap-2">
             <Button asChild variant="ghost" className="font-semibold">
-              <Link to="/register">Register</Link>
+              <Link to="/register">Crear cuenta</Link>
             </Button>
             <Button asChild variant="outline" className="font-semibold border-[#EACED7] text-[#9B5F71] hover:bg-[#FDF6F8]">
               <Link to="/">Inicio</Link>
@@ -101,7 +101,7 @@ export default function Login() {
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">Correo electrónico</Label>
               <Input 
                 id="email"
                 type="email" 

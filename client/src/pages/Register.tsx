@@ -89,7 +89,7 @@ export default function Register() {
           </Link>
           <div className="hidden md:flex items-center gap-2">
             <Button asChild variant="ghost" className="font-semibold">
-              <Link to="/login">Login</Link>
+              <Link to="/login">Iniciar sesión</Link>
             </Button>
             <Button asChild variant="outline" className="font-semibold border-[#EACED7] text-[#9B5F71] hover:bg-[#FDF6F8]">
               <Link to="/">Inicio</Link>

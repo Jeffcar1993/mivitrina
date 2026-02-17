@@ -23,7 +23,10 @@ import {
   Star,
   ChevronLeft,
   ChevronRight,
-  Menu
+  Menu,
+  House,
+  User,
+  CreditCard
 } from "lucide-react";
 
 export default function ProductDetail() {
@@ -182,18 +185,21 @@ export default function ProductDetail() {
 
                   <div className="mt-6 flex flex-col gap-3">
                     <SheetClose asChild>
-                      <Link to="/" className="rounded-lg border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                      <Link to="/" className="flex h-12 items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm transition-colors hover:bg-slate-50">
+                        <House className="h-5 w-5" />
                         Inicio
                       </Link>
                     </SheetClose>
                     <SheetClose asChild>
-                      <Link to="/profile" className="rounded-lg border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                      <Link to="/profile" className="flex h-12 items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm transition-colors hover:bg-slate-50">
+                        <User className="h-5 w-5" />
                         Mi perfil
                       </Link>
                     </SheetClose>
                     <SheetClose asChild>
-                      <Link to="/checkout" className="rounded-lg border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50">
-                        Ir al checkout
+                      <Link to="/checkout" className="flex h-12 items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm transition-colors hover:bg-slate-50">
+                        <CreditCard className="h-5 w-5" />
+                        Ir al pago
                       </Link>
                     </SheetClose>
                   </div>

@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from "react-router-dom";
+import { useInfiniteQuery } from '@tanstack/react-query';
 import api from './lib/axios';
 import type { Product } from './types';
 import { useCart } from "./context/cartContext";
@@ -12,20 +13,70 @@ import { Input } from "./components/ui/input";
 import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "./components/ui/sheet";
 
 // Iconos y Componente personalizado
-import { ShoppingCart, Trash2, LogOut, User, Plus, Search, Menu } from "lucide-react";
+import { ShoppingCart, Trash2, LogOut, User, Plus, Search, Menu, House, LogIn, UserPlus } from "lucide-react";
 import { AddProductForm } from "./components/addProductForm";
 import { CartSheet } from './components/cartSheet';
 import { Footer } from './components/Footer';
 import LogoImage from './assets/Logo.webp';
 
+interface ProductsPaginatedResponse {
+  items: Product[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasNextPage: boolean;
+  };
+}
+
+const PRODUCTS_PAGE_SIZE = 24;
+
 export default function App() {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
   const [selectedCategory, setSelectedCategory] = useState<string>("Todos");
   const [searchQuery, setSearchQuery] = useState<string>("");
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => Boolean(localStorage.getItem("token")));
+  const [currentUserId] = useState<number | null>(() => {
+    const user = localStorage.getItem("user");
+    if (!user) return null;
+
+    try {
+      const userData = JSON.parse(user);
+      return userData.id ?? null;
+    } catch {
+      return null;
+    }
+  });
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
+
+  const {
+    data,
+    isPending,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
+    refetch,
+  } = useInfiniteQuery({
+    queryKey: ['products'],
+    initialPageParam: 1,
+    queryFn: async ({ pageParam }) => {
+      const res = await api.get<ProductsPaginatedResponse>('/products', {
+        params: {
+          page: pageParam,
+          limit: PRODUCTS_PAGE_SIZE,
+        },
+      });
+
+      return res.data;
+    },
+    getNextPageParam: (lastPage) =>
+      lastPage.pagination.hasNextPage ? lastPage.pagination.page + 1 : undefined,
+  });
+
+  const products = useMemo(
+    () => data?.pages.flatMap((page) => page.items) ?? [],
+    [data]
+  );
 
   const filteredProducts = products.filter((product) => {
     const matchesCategory =
@@ -40,7 +91,7 @@ export default function App() {
   });
 
   // Calcular tendencias dinámicamente
-  const trendingCategories = (() => {
+  const trendingCategories = useMemo(() => {
     const categoryCounts = products.reduce((acc, product) => {
       const cat = product.category_name || 'Sin categoría';
       acc[cat] = (acc[cat] || 0) + 1;
@@ -51,41 +102,16 @@ export default function App() {
       .sort(([, a], [, b]) => b - a)
       .slice(0, 3)
       .map(([category]) => category);
-  })();
+  }, [products]);
   
   // Extraemos datos y funciones del Carrito
   const { addToCart } = useCart();
-
-  const fetchProducts = async () => {
-    try {
-      const res = await api.get<Product[]>('/products');
-      setProducts(res.data);
-    } catch (err) {
-      console.error("Error al cargar productos:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchProducts();
-  }, []);
-
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    const user = localStorage.getItem("user");
-    setIsAuthenticated(Boolean(token));
-    if (user) {
-      const userData = JSON.parse(user);
-      setCurrentUserId(userData.id);
-    }
-  }, []);
 
   const handleDelete = async (id: number) => {
     if (window.confirm("¿Estás seguro de que quieres eliminar este producto?")) {
       try {
         await api.delete(`/products/${id}`);
-        fetchProducts(); 
+        await refetch();
       } catch (err) {
         console.error("Error al borrar:", err);
         alert("No se pudo eliminar el producto");
@@ -101,7 +127,7 @@ export default function App() {
     window.location.reload();
   };
 
-  if (loading) {
+  if (isPending) {
     return (
       <div className="flex h-screen w-full flex-col items-center justify-center bg-white">
         <div className="relative flex items-center justify-center">
@@ -125,8 +151,8 @@ export default function App() {
           <div className="hidden md:flex items-center gap-2">
             {!isAuthenticated ? (
               <>
-                <Link to="/login" className="h-10 flex items-center bg-[#C05673] hover:bg-[#B04B68] text-white font-semibold px-6 rounded-lg shadow-sm transition duration-300 ease-in-out">Login</Link>
-                <Link to="/register" className="h-10 flex items-center bg-transparent hover:bg-[#FDF6F8] text-[#9B5F71] font-semibold px-6 border border-[#EACED7] rounded-lg transition duration-300 ease-in-out">Register</Link>
+                <Link to="/login" className="h-10 flex items-center bg-[#C05673] hover:bg-[#B04B68] text-white font-semibold px-6 rounded-lg shadow-sm transition duration-300 ease-in-out">Iniciar sesión</Link>
+                <Link to="/register" className="h-10 flex items-center bg-transparent hover:bg-[#FDF6F8] text-[#9B5F71] font-semibold px-6 border border-[#EACED7] rounded-lg transition duration-300 ease-in-out">Crear cuenta</Link>
                 <div className="h-6 w-[1px] bg-slate-200 mx-1" />
                 <Button asChild className="h-10 rounded-lg bg-[#C05673] px-6 font-semibold text-white shadow-sm transition duration-300 ease-in-out hover:bg-[#B04B68]">
                   <Link to="/login">Publicar producto</Link>
@@ -135,7 +161,7 @@ export default function App() {
               </>
             ) : (
               <>
-                <AddProductForm onProductAdded={fetchProducts} />
+                <AddProductForm onProductAdded={refetch} />
                 <Button asChild variant="ghost" size="icon" className="h-10 w-10 hover:bg-slate-100" title="Mi perfil">
                   <Link to="/profile">
                     <User className="h-6 w-6 text-slate-700" />
@@ -171,28 +197,75 @@ export default function App() {
                 </SheetHeader>
 
                 <div className="mt-6 flex flex-col gap-3">
-                  <SheetClose asChild>
-                    <Link to="/" className="rounded-lg border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50">
-                      Inicio
-                    </Link>
-                  </SheetClose>
+                  <div className="rounded-2xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white p-4">
+                    <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Accesos rápidos</p>
+                    <div className="flex flex-col gap-2">
+                      <SheetClose asChild>
+                        <Link
+                          to="/"
+                          aria-label="Inicio"
+                          className="flex h-12 items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 text-slate-700 shadow-sm transition-colors hover:bg-slate-50"
+                        >
+                          <House className="h-5 w-5" />
+                          <span className="text-sm font-medium">Inicio</span>
+                        </Link>
+                      </SheetClose>
+
+                      {!isAuthenticated ? (
+                        <>
+                          <SheetClose asChild>
+                            <Link
+                              to="/login"
+                              aria-label="Iniciar sesión"
+                              className="flex h-12 items-center gap-3 rounded-xl bg-[#C05673] px-4 text-white shadow-sm transition-colors hover:bg-[#B04B68]"
+                            >
+                              <LogIn className="h-5 w-5" />
+                              <span className="text-sm font-semibold">Iniciar sesión</span>
+                            </Link>
+                          </SheetClose>
+
+                          <SheetClose asChild>
+                            <Link
+                              to="/register"
+                              aria-label="Crear cuenta"
+                              className="flex h-12 items-center gap-3 rounded-xl border border-[#EACED7] bg-white px-4 text-[#9B5F71] shadow-sm transition-colors hover:bg-[#FDF6F8]"
+                            >
+                              <UserPlus className="h-5 w-5" />
+                              <span className="text-sm font-semibold">Crear cuenta</span>
+                            </Link>
+                          </SheetClose>
+                        </>
+                      ) : (
+                        <>
+                          <SheetClose asChild>
+                            <Link
+                              to="/profile"
+                              aria-label="Mi perfil"
+                              className="flex h-12 items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 text-slate-700 shadow-sm transition-colors hover:bg-slate-50"
+                            >
+                              <User className="h-5 w-5" />
+                              <span className="text-sm font-medium">Mi perfil</span>
+                            </Link>
+                          </SheetClose>
+
+                          <Button
+                            onClick={handleLogout}
+                            variant="outline"
+                            className="h-12 justify-start gap-3 rounded-xl border-red-200 px-4 text-red-600 hover:bg-red-50 hover:text-red-700"
+                            aria-label="Cerrar sesión"
+                          >
+                            <LogOut className="h-5 w-5" />
+                            <span className="text-sm font-medium">Cerrar sesión</span>
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </div>
 
                   {!isAuthenticated ? (
                     <>
                       <SheetClose asChild>
-                        <Link to="/login" className="rounded-lg bg-[#C05673] px-4 py-3 text-sm font-semibold text-white hover:bg-[#B04B68] text-center">
-                          Login
-                        </Link>
-                      </SheetClose>
-
-                      <SheetClose asChild>
-                        <Link to="/register" className="rounded-lg border border-[#EACED7] px-4 py-3 text-sm font-semibold text-[#9B5F71] hover:bg-[#FDF6F8] text-center">
-                          Register
-                        </Link>
-                      </SheetClose>
-
-                      <SheetClose asChild>
-                        <Link to="/login" className="rounded-lg border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50 text-center">
+                        <Link to="/login" className="flex h-12 items-center justify-center rounded-xl border border-slate-200 px-4 text-sm font-medium text-slate-700 shadow-sm transition-colors hover:bg-slate-50 text-center">
                           Publicar producto
                         </Link>
                       </SheetClose>
@@ -200,23 +273,8 @@ export default function App() {
                   ) : (
                     <>
                       <div className="py-1">
-                        <AddProductForm onProductAdded={fetchProducts} />
+                        <AddProductForm onProductAdded={refetch} />
                       </div>
-
-                      <SheetClose asChild>
-                        <Link to="/profile" className="rounded-lg border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50 text-center">
-                          Mi perfil
-                        </Link>
-                      </SheetClose>
-
-                      <Button
-                        onClick={handleLogout}
-                        variant="outline"
-                        className="justify-center border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
-                      >
-                        <LogOut className="mr-2 h-4 w-4" />
-                        Cerrar sesión
-                      </Button>
                     </>
                   )}
                 </div>
@@ -330,7 +388,7 @@ export default function App() {
               <p className="mt-2 text-slate-500">Parece que aún no has subido ningún producto.</p>
               <div className="mt-6">
                 {isAuthenticated ? (
-                  <AddProductForm onProductAdded={fetchProducts} />
+                  <AddProductForm onProductAdded={refetch} />
                 ) : (
                   <Button asChild className="h-10 rounded-full bg-[#C05673] px-6 font-semibold text-white shadow-sm transition duration-300 ease-in-out hover:bg-[#B04B68]">
                     <Link to="/login">Inicia sesión para vender</Link>
@@ -339,69 +397,85 @@ export default function App() {
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {filteredProducts.map((product) => (
-                <Card key={product.id} className="group relative flex flex-col overflow-hidden border border-slate-200 bg-white transition-all duration-300 hover:-translate-y-1 hover:border-slate-300">
+            <>
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {filteredProducts.map((product) => (
+                  <Card key={product.id} className="group relative flex flex-col overflow-hidden border border-slate-200 bg-white transition-all duration-300 hover:-translate-y-1 hover:border-slate-300">
                   
-                  {/* Imagen con Link al Detalle */}
-                  <Link to={`/product/${product.id}`} className="relative aspect-[4/5] overflow-hidden bg-slate-100 block">
-                    <img
-                      src={product.image_url}
-                      alt={product.title}
-                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                    />
-                    <div className="absolute inset-0 bg-black/5 opacity-0 transition-opacity group-hover:opacity-100" />
-                    <Badge className="absolute left-3 top-3 bg-white/90 text-slate-900 backdrop-blur shadow-sm hover:bg-white">
-                      {product.category_name || 'Novedad'}
-                    </Badge>
-                  </Link>
-
-                  <CardHeader className="p-5 pb-2"> 
-                    <Link to={`/product/${product.id}`}>
-                      <CardTitle className="hover:text-[#C05673] transition-colors cursor-pointer text-lg font-semibold capitalize text-slate-800">
-                        {product.title}
-                      </CardTitle>
+                    {/* Imagen con Link al Detalle */}
+                    <Link to={`/product/${product.id}`} className="relative aspect-[4/5] overflow-hidden bg-slate-100 block">
+                      <img
+                        src={product.image_url}
+                        alt={product.title}
+                        loading="lazy"
+                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      />
+                      <div className="absolute inset-0 bg-black/5 opacity-0 transition-opacity group-hover:opacity-100" />
+                      <Badge className="absolute left-3 top-3 bg-white/90 text-slate-900 backdrop-blur shadow-sm hover:bg-white">
+                        {product.category_name || 'Novedad'}
+                      </Badge>
                     </Link>
-                    <p className="mt-1 text-xl font-semibold text-slate-900">
-                      ${Number(product.price).toLocaleString()}
-                    </p>
-                    <p className="mt-1 text-xs font-semibold text-slate-500">
-                      Disponibles: {Number(product.quantity ?? 0)}
-                    </p>
-                  </CardHeader>
 
-                  <CardContent className="px-5 py-2">
-                    <p className="line-clamp-2 text-sm leading-relaxed text-slate-500">
-                      {product.description}
-                    </p>
-                  </CardContent>
+                    <CardHeader className="p-5 pb-2"> 
+                      <Link to={`/product/${product.id}`}>
+                        <CardTitle className="hover:text-[#C05673] transition-colors cursor-pointer text-lg font-semibold capitalize text-slate-800">
+                          {product.title}
+                        </CardTitle>
+                      </Link>
+                      <p className="mt-1 text-xl font-semibold text-slate-900">
+                        ${Number(product.price).toLocaleString()}
+                      </p>
+                      <p className="mt-1 text-xs font-semibold text-slate-500">
+                        Disponibles: {Number(product.quantity ?? 0)}
+                      </p>
+                    </CardHeader>
 
-                  <CardFooter className="mt-auto flex items-center gap-2 p-5 pt-4">
-                    <Button
-                      onClick={() => addToCart(product)}
-                      size="sm"
-                      className="flex-1 rounded-full bg-[#C05673] text-white shadow-sm transition-all hover:bg-[#B04B68]"
-                      title="Añadir al carrito"
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Comprar
-                    </Button>
-                    
-                    {/* Botón Borrar - solo para el creador */}
-                    {isAuthenticated && currentUserId === product.user_id && (
-                      <Button 
-                        variant="outline" 
-                        size="icon" 
-                        className="shrink-0 border-slate-200 hover:bg-[#FDF6F8] hover:text-[#9B5F71] hover:border-[#EACED7] transition-colors"
-                        onClick={() => handleDelete(product.id)}
+                    <CardContent className="px-5 py-2">
+                      <p className="line-clamp-2 text-sm leading-relaxed text-slate-500">
+                        {product.description}
+                      </p>
+                    </CardContent>
+
+                    <CardFooter className="mt-auto flex items-center gap-2 p-5 pt-4">
+                      <Button
+                        onClick={() => addToCart(product)}
+                        size="sm"
+                        className="flex-1 rounded-full bg-[#C05673] text-white shadow-sm transition-all hover:bg-[#B04B68]"
+                        title="Añadir al carrito"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Plus className="h-4 w-4 mr-2" />
+                        Comprar
                       </Button>
-                    )}
-                  </CardFooter>
-                </Card>
-              ))}
-            </div>
+                      
+                      {/* Botón Borrar - solo para el creador */}
+                      {isAuthenticated && currentUserId === product.user_id && (
+                        <Button 
+                          variant="outline" 
+                          size="icon" 
+                          className="shrink-0 border-slate-200 hover:bg-[#FDF6F8] hover:text-[#9B5F71] hover:border-[#EACED7] transition-colors"
+                          onClick={() => handleDelete(product.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </CardFooter>
+                  </Card>
+                ))}
+              </div>
+
+              {hasNextPage && (
+                <div className="mt-8 flex justify-center">
+                  <Button
+                    onClick={() => fetchNextPage()}
+                    disabled={isFetchingNextPage}
+                    variant="outline"
+                    className="h-11 rounded-full border-slate-200 px-8 text-slate-700 hover:bg-slate-50"
+                  >
+                    {isFetchingNextPage ? 'Cargando más...' : 'Cargar más productos'}
+                  </Button>
+                </div>
+              )}
+            </>
           )}
         </div>
       </main>
