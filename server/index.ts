@@ -192,16 +192,40 @@ app.post('/api/auth/login', async (req, res) => {
 app.put('/api/user/profile', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.userId;
-    const { username, email, bio, phone, profile_image } = req.body;
+    const { username, email, bio, phone, profile_image, mercado_pago_account_id, payout_automation_enabled } = req.body;
 
     const sql = `
       UPDATE users 
-      SET username = $1, email = $2, bio = $3, phone = $4, profile_image = $5
+      SET
+        username = $1,
+        email = $2,
+        bio = $3,
+        phone = $4,
+        profile_image = $5,
+        mercado_pago_account_id = COALESCE($7, mercado_pago_account_id),
+        payout_automation_enabled = COALESCE($8, payout_automation_enabled)
       WHERE id = $6
-      RETURNING id, username, email, bio, phone, profile_image, created_at
+      RETURNING id, username, email, bio, phone, profile_image, mercado_pago_account_id, payout_automation_enabled, created_at
     `;
     
-    const result = await query(sql, [username, email, bio, phone, profile_image, userId]);
+    const normalizedPayoutFlag =
+      typeof payout_automation_enabled === 'boolean' ? payout_automation_enabled : null;
+
+    const normalizedMercadoPagoAccountId =
+      typeof mercado_pago_account_id === 'string' && mercado_pago_account_id.trim().length > 0
+        ? mercado_pago_account_id.trim()
+        : null;
+
+    const result = await query(sql, [
+      username,
+      email,
+      bio,
+      phone,
+      profile_image,
+      userId,
+      normalizedMercadoPagoAccountId,
+      normalizedPayoutFlag,
+    ]);
     
     if (result.rows.length === 0) {
       return res.status(404).json({ error: "Usuario no encontrado" });

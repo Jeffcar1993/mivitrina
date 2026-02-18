@@ -1,6 +1,7 @@
 import express, { type Request, type Response } from 'express';
 import { query } from '../config/db.js';
 import { MercadoPagoConfig, Preference } from 'mercadopago';
+import { processAutomaticPayoutsForOrder } from '../services/automaticPayouts.js';
 
 // Configurar Mercado Pago (usa tu access token)
 const client = new MercadoPagoConfig({
@@ -182,6 +183,7 @@ router.put('/:orderNumber/confirm-payment', async (req: Request, res: Response) 
   const { orderNumber } = req.params;
 
   try {
+    let confirmedOrderId: number | null = null;
     await query('BEGIN'); // Iniciar transacción
 
     // 1. Actualizar la orden a completada
@@ -194,6 +196,7 @@ router.put('/:orderNumber/confirm-payment', async (req: Request, res: Response) 
 
     if (orderResult.rows.length > 0) {
       const orderId = orderResult.rows[0].id;
+      confirmedOrderId = Number(orderId);
 
       // 2. Buscar los items de esa orden
       const items = await query(
@@ -210,7 +213,16 @@ router.put('/:orderNumber/confirm-payment', async (req: Request, res: Response) 
       }
       
       await query('COMMIT');
-      res.json({ success: true, message: 'Pago confirmado y stock actualizado' });
+
+      const payoutSummary = confirmedOrderId
+        ? await processAutomaticPayoutsForOrder(confirmedOrderId)
+        : { processed: 0, paid: 0, failed: 0, skipped: 0 };
+
+      res.json({
+        success: true,
+        message: 'Pago confirmado, stock actualizado y repartición automática procesada',
+        payoutSummary,
+      });
     } else {
       await query('ROLLBACK');
       res.status(404).json({ error: 'Orden no encontrada o ya procesada' });
