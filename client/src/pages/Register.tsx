@@ -254,7 +254,7 @@ export default function Register() {
                           text="Un número (0-9)" 
                         />
                         <RequirementItem 
-                          met={/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(formData.password)} 
+                          met={/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(formData.password)} 
                           text="Un carácter especial (!@#$%^& etc)" 
                         />
                       </div>

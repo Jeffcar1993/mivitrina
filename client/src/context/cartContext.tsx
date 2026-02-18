@@ -81,10 +81,16 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         } else if (cart.length > 0) {
           await api.post('/cart/save', { items: compressCart(cart) });
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error('Error sincronizando carrito:', error);
         // Si es error 401, limpiar token inválido
-        if (error?.response?.status === 401) {
+        if (
+          typeof error === 'object' &&
+          error !== null &&
+          'response' in error &&
+          typeof (error as { response?: { status?: number } }).response?.status === 'number' &&
+          (error as { response?: { status?: number } }).response?.status === 401
+        ) {
           localStorage.removeItem('token');
         }
       } finally {
@@ -115,10 +121,16 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     const syncToServer = async () => {
       try {
         await api.post('/cart/save', { items: compressCart(cart) });
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error('Error guardando carrito en servidor:', error);
         // Si es error 401, limpiar token inválido
-        if (error?.response?.status === 401) {
+        if (
+          typeof error === 'object' &&
+          error !== null &&
+          'response' in error &&
+          typeof (error as { response?: { status?: number } }).response?.status === 'number' &&
+          (error as { response?: { status?: number } }).response?.status === 401
+        ) {
           localStorage.removeItem('token');
         }
       }
