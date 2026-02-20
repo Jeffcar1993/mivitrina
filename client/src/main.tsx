@@ -23,6 +23,7 @@ const NotFound = lazy(() => import('./pages/NotFound.tsx'))
 const HowItWorks = lazy(() => import('./pages/HowItWorks.tsx'))
 const SellInfo = lazy(() => import('./pages/SellInfo.tsx'))
 const BuyInfo = lazy(() => import('./pages/BuyInfo.tsx'))
+const SellerPayoutSetup = lazy(() => import('./pages/SellerPayoutSetup.tsx'))
 
 function ScrollToTop() {
   const { pathname } = useLocation()
@@ -74,6 +75,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
               <Route path="/como-funciona" element={<HowItWorks />} />
               <Route path="/info-vender" element={<SellInfo />} />
               <Route path="/info-comprar" element={<BuyInfo />} />
+              <Route path="/configurar-cobros" element={<SellerPayoutSetup />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>

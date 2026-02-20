@@ -48,7 +48,9 @@ export default function Profile() {
     email: '',
     bio: '',
     phone: '',
-    profile_image: ''
+    profile_image: '',
+    mercado_pago_account_id: '',
+    payout_automation_enabled: true,
   });
 
   const isAdminUser = Boolean(user?.email) && ADMIN_EMAIL.length > 0 && user!.email.toLowerCase() === ADMIN_EMAIL;
@@ -67,7 +69,9 @@ export default function Profile() {
       email: userData.email || '',
       bio: userData.bio || '',
       phone: userData.phone || '',
-      profile_image: userData.profile_image || ''
+      profile_image: userData.profile_image || '',
+      mercado_pago_account_id: userData.mercado_pago_account_id || '',
+      payout_automation_enabled: typeof userData.payout_automation_enabled === 'boolean' ? userData.payout_automation_enabled : true,
     });
 
     fetchUserOrders();
@@ -154,8 +158,8 @@ export default function Profile() {
     
     setLoading(true);
     try {
-      const response = await api.put(`/users/${user.id}`, formData);
-      const updatedUser = response.data;
+      const response = await api.put('/user/profile', formData);
+      const updatedUser = response.data?.user || response.data;
       setUser(updatedUser);
       localStorage.setItem('user', JSON.stringify(updatedUser));
       setEditing(false);
@@ -447,6 +451,23 @@ export default function Profile() {
                   rows={4}
                 />
               </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="mercado_pago_account_id">Cuenta de recepción Mercado Pago</Label>
+                <Input
+                  id="mercado_pago_account_id"
+                  placeholder="Ej: user_id / collector_id del vendedor"
+                  value={formData.mercado_pago_account_id}
+                  onChange={(e) =>
+                    setFormData({ ...formData, mercado_pago_account_id: e.target.value })
+                  }
+                  disabled={!editing}
+                  className={!editing ? 'bg-slate-50' : ''}
+                />
+                <p className="text-xs text-slate-500">
+                  Este dato es obligatorio para que el pago automático 97/3 se ejecute sin fallos.
+                </p>
+              </div>
             </div>
 
             {/* Action Buttons */}
@@ -468,7 +489,12 @@ export default function Profile() {
                       email: user.email || '',
                       bio: user.bio || '',
                       phone: user.phone || '',
-                      profile_image: user.profile_image || ''
+                      profile_image: user.profile_image || '',
+                      mercado_pago_account_id: user.mercado_pago_account_id || '',
+                      payout_automation_enabled:
+                        typeof user.payout_automation_enabled === 'boolean'
+                          ? user.payout_automation_enabled
+                          : true,
                     });
                   }}
                   variant="outline"

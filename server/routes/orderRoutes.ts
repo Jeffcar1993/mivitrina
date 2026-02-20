@@ -1,13 +1,22 @@
 import express, { type Request, type Response } from 'express';
 import { query } from '../config/db.js';
 import { authMiddleware, type AuthRequest } from '../middleware/auth.js';
+import jwt from 'jsonwebtoken';
 
 const router = express.Router();
 
 const getPlatformFeePercentage = (): number => Number(process.env.PLATFORM_FEE_PERCENTAGE || 3);
 const getAdminEmail = (): string => String(process.env.ADMIN_EMAIL || '').trim().toLowerCase();
+const JWT_SECRET = process.env.JWT_SECRET || 'tu-secreto-super-seguro-cambiar-en-produccion';
 
 const roundMoney = (value: number): number => Math.round(value * 100) / 100;
+
+interface ProductOrderMeta {
+  availableQty: number;
+  sellerId: number;
+  payoutAutomationEnabled: boolean;
+  mercadoPagoAccountId: string | null;
+}
 
 const ensureAdmin = async (userId: number | undefined, res: Response): Promise<boolean> => {
   const adminEmail = getAdminEmail();
@@ -62,23 +71,35 @@ router.post('/create', async (req: Request, res: Response) => {
     // Obtener user_id si está autenticado
     const authHeader = req.headers.authorization;
     let userId: number | null = null;
-    if (authHeader) {
+    if (authHeader?.startsWith('Bearer ')) {
       try {
-        const token = authHeader.split(' ')[1];
-        // Aquí deberías verificar el token, por ahora lo dejamos como null para compras anónimas
-        userId = null;
-      } catch (err) {
+        const token = authHeader.replace('Bearer ', '').trim();
+        const decoded = jwt.verify(token, JWT_SECRET) as { id?: number };
+        if (typeof decoded.id === 'number' && Number.isFinite(decoded.id)) {
+          userId = decoded.id;
+        }
+      } catch {
         userId = null;
       }
     }
 
     await query('BEGIN');
 
-    // Validar stock disponible
+    const productMetaById = new Map<number, ProductOrderMeta>();
+
+    // Validar stock disponible y configuración de payout automático por vendedor
     for (const item of items) {
       const requestedQty = Math.max(1, Number(item.quantity || 1));
       const stockResult = await query(
-        'SELECT quantity FROM products WHERE id = $1 FOR UPDATE',
+        `SELECT
+          p.quantity,
+          p.user_id AS seller_id,
+          COALESCE(u.payout_automation_enabled, true) AS payout_automation_enabled,
+          u.mercado_pago_account_id
+         FROM products p
+         LEFT JOIN users u ON u.id = p.user_id
+         WHERE p.id = $1
+         FOR UPDATE OF p`,
         [item.productId]
       );
 
@@ -89,14 +110,56 @@ router.post('/create', async (req: Request, res: Response) => {
       }
 
       const availableQty = Number(stockResult.rows[0].quantity || 0);
+      const sellerId = Number(stockResult.rows[0].seller_id || 0);
+      const payoutAutomationEnabled = Boolean(stockResult.rows[0].payout_automation_enabled);
+      const mercadoPagoAccountIdRaw = stockResult.rows[0].mercado_pago_account_id;
+      const mercadoPagoAccountId =
+        typeof mercadoPagoAccountIdRaw === 'string' && mercadoPagoAccountIdRaw.trim().length > 0
+          ? mercadoPagoAccountIdRaw.trim()
+          : null;
+
+      if (!sellerId) {
+        await query('ROLLBACK');
+        res.status(409).json({ error: 'El producto no tiene vendedor válido asociado' });
+        return;
+      }
+
+      if (!payoutAutomationEnabled) {
+        await query('ROLLBACK');
+        res.status(409).json({
+          error: 'Este vendedor no tiene habilitada la liquidación automática de pagos',
+        });
+        return;
+      }
+
+      if (!mercadoPagoAccountId) {
+        await query('ROLLBACK');
+        res.status(409).json({
+          error: 'El vendedor no tiene cuenta de recepción configurada para pago automático',
+        });
+        return;
+      }
+
       if (availableQty < requestedQty) {
         await query('ROLLBACK');
         res.status(409).json({ error: 'No hay suficiente stock disponible' });
         return;
       }
+
+      productMetaById.set(Number(item.productId), {
+        availableQty,
+        sellerId,
+        payoutAutomationEnabled,
+        mercadoPagoAccountId,
+      });
     }
 
     const itemsWithAmounts = items.map((item: any) => {
+      const productMeta = productMetaById.get(Number(item.productId));
+      if (!productMeta) {
+        throw new Error('No se encontró metadata del producto durante la creación de la orden');
+      }
+
       const platformFeePercentage = getPlatformFeePercentage();
       const requestedQty = Math.max(1, Number(item.quantity || 1));
       const unitPrice = Number(item.price);
@@ -109,6 +172,7 @@ router.post('/create', async (req: Request, res: Response) => {
         requestedQty,
         unitPrice,
         subtotal,
+        sellerId: productMeta.sellerId,
         platformFeePercentage,
         platformFeeAmount,
         sellerNetAmount,

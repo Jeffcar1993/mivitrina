@@ -23,5 +23,7 @@ export interface User {
   profile_image?: string;
   bio?: string;
   phone?: string;
+  mercado_pago_account_id?: string;
+  payout_automation_enabled?: boolean;
   created_at: string;
 }

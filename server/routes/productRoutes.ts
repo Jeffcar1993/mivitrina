@@ -31,6 +31,42 @@ router.post('/', authMiddleware, upload.array('images', 4), async (req: AuthRequ
     const { title, description, price, category_id, quantity } = req.body;
     const userId = req.userId; // Viene del middleware de auth
 
+    const sellerConfigResult = await query(
+      `SELECT
+        COALESCE(payout_automation_enabled, true) AS payout_automation_enabled,
+        mercado_pago_account_id
+       FROM users
+       WHERE id = $1
+       LIMIT 1`,
+      [userId]
+    );
+
+    if (sellerConfigResult.rows.length === 0) {
+      res.status(404).json({ error: 'Usuario vendedor no encontrado' });
+      return;
+    }
+
+    const payoutAutomationEnabled = Boolean(sellerConfigResult.rows[0].payout_automation_enabled);
+    const mercadoPagoAccountIdRaw = sellerConfigResult.rows[0].mercado_pago_account_id;
+    const mercadoPagoAccountId =
+      typeof mercadoPagoAccountIdRaw === 'string' && mercadoPagoAccountIdRaw.trim().length > 0
+        ? mercadoPagoAccountIdRaw.trim()
+        : null;
+
+    if (!payoutAutomationEnabled) {
+      res.status(409).json({
+        error: 'Debes habilitar la liquidación automática para poder publicar productos',
+      });
+      return;
+    }
+
+    if (!mercadoPagoAccountId) {
+      res.status(409).json({
+        error: 'Debes configurar tu cuenta de recepción de Mercado Pago antes de publicar',
+      });
+      return;
+    }
+
     // Accedemos a los archivos de Multer
     const files = (req.files as Express.Multer.File[]) || [];
 

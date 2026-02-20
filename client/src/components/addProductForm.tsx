@@ -57,6 +57,50 @@ export function AddProductForm({ onProductAdded }: AddProductFormProps) {
     };
   }, []);
 
+  const canOpenPublishFlow = (): boolean => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      toast.error('Debes iniciar sesión para publicar un producto');
+      navigate('/login');
+      return false;
+    }
+
+    const rawUser = localStorage.getItem('user');
+    if (!rawUser) {
+      toast.error('No se encontró tu sesión. Vuelve a iniciar sesión.');
+      navigate('/login');
+      return false;
+    }
+
+    try {
+      const user = JSON.parse(rawUser) as {
+        mercado_pago_account_id?: string;
+        payout_automation_enabled?: boolean;
+      };
+
+      const accountId = typeof user.mercado_pago_account_id === 'string'
+        ? user.mercado_pago_account_id.trim()
+        : '';
+
+      const payoutEnabled =
+        typeof user.payout_automation_enabled === 'boolean'
+          ? user.payout_automation_enabled
+          : true;
+
+      if (!payoutEnabled || !accountId) {
+        toast.error('Debes configurar cobros antes de publicar tu primer producto');
+        navigate('/configurar-cobros?returnTo=/', { replace: false });
+        return false;
+      }
+    } catch {
+      toast.error('No se pudo validar tu configuración de cobros');
+      navigate('/configurar-cobros?returnTo=/', { replace: false });
+      return false;
+    }
+
+    return true;
+  };
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
@@ -114,7 +158,17 @@ export function AddProductForm({ onProductAdded }: AddProductFormProps) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="h-10 bg-[#C05673] text-white hover:bg-[#B04B68]">
+        <Button
+          className="h-10 bg-[#C05673] text-white hover:bg-[#B04B68]"
+          onClick={(event) => {
+            if (!canOpenPublishFlow()) {
+              event.preventDefault();
+              event.stopPropagation();
+              return;
+            }
+            setOpen(true);
+          }}
+        >
           <PlusCircle className="mr-2 h-4 w-4" /> Nuevo Producto
         </Button>
       </DialogTrigger>
