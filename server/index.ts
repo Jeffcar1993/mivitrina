@@ -19,7 +19,42 @@ import { configurePassport } from './config/passport.js';
 dotenv.config();
 
 const app = express();
-const JWT_SECRET = process.env.JWT_SECRET || 'tu-secreto-super-seguro-cambiar-en-produccion';
+const DEFAULT_JWT_SECRET = 'tu-secreto-super-seguro-cambiar-en-produccion';
+const JWT_SECRET = process.env.JWT_SECRET || DEFAULT_JWT_SECRET;
+
+if (process.env.NODE_ENV === 'production' && JWT_SECRET === DEFAULT_JWT_SECRET) {
+  throw new Error('JWT_SECRET inseguro: configura un secreto fuerte para producción');
+}
+
+const allowedOrigins = Array.from(
+  new Set(
+    [
+      process.env.CLIENT_URL,
+      ...(process.env.CORS_ALLOWED_ORIGINS || '').split(',').map((origin) => origin.trim()),
+    ].filter((origin): origin is string => Boolean(origin && origin.length > 0))
+  )
+);
+
+const corsOptions: cors.CorsOptions = {
+  origin: (origin, callback) => {
+    if (!origin) {
+      callback(null, true);
+      return;
+    }
+
+    if (process.env.NODE_ENV !== 'production') {
+      callback(null, true);
+      return;
+    }
+
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+      return;
+    }
+
+    callback(new Error('Origen no permitido por CORS'));
+  },
+};
 
 // Función para validar contraseña segura
 const validatePassword = (password: string): { isValid: boolean; errors: string[] } => {
@@ -55,7 +90,7 @@ const validatePassword = (password: string): { isValid: boolean; errors: string[
 // Configurar Passport
 configurePassport();
 
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true })); // Añade esta línea para formularios
 app.use(passport.initialize());
@@ -65,9 +100,6 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/auth', authRoutes);
-app.use('/api/orders', orderRoutes);
-app.use('/api/payments', paymentRoutes);
-app.use('/api/cart', cartRoutes);
 
 // Ruta de prueba
 app.get('/', (req: Request, res: Response) => {
