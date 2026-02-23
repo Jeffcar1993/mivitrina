@@ -2,7 +2,12 @@
   "scripts": {
     "dev": "npm --prefix client run dev",
     "dev:client": "npm --prefix client run dev",
-    "dev:server": "npm --prefix server run dev"
+    "dev:server": "npm --prefix server run dev",
+    "test:client": "npm --prefix client run test",
+    "test:server": "npm --prefix server run test",
+    "test": "npm run test:client && npm run test:server",
+    "build": "npm --prefix client run build && npm --prefix server run build",
+    "verify": "npm --prefix client run lint && npm run test && npm run build"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
