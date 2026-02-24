@@ -122,6 +122,30 @@ router.post('/', authMiddleware, upload.array('images', 4), async (req: AuthRequ
   }
 });
 
+router.post('/upload-image', authMiddleware, upload.single('image'), async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    if (!req.file) {
+      res.status(400).json({ error: 'No se envió ninguna imagen' });
+      return;
+    }
+
+    const b64 = Buffer.from(req.file.buffer).toString('base64');
+    const dataURI = `data:${req.file.mimetype};base64,${b64}`;
+
+    const cloudinaryResult = await cloudinary.uploader.upload(dataURI, {
+      folder: 'mi_vitrina_profiles',
+    });
+
+    res.json({
+      message: 'Imagen subida correctamente',
+      imageUrl: cloudinaryResult.secure_url,
+    });
+  } catch (error) {
+    console.error('Error al subir imagen de perfil:', error);
+    res.status(500).json({ error: 'Error al subir la imagen de perfil' });
+  }
+});
+
 // RUTA PARA OBTENER TODOS LOS PRODUCTOS
 router.get('/', async (_req: Request, res: Response): Promise<void> => {
   try {

@@ -208,7 +208,12 @@ export default function ProductDetail() {
               </>
             ) : (
               <>
-                <AddProductForm onProductAdded={() => undefined} />
+                <AddProductForm
+                  onProductAdded={() => undefined}
+                  triggerLabel="Quiero vender"
+                  triggerClassName="h-10 rounded-lg bg-[#C05673] px-6 font-semibold text-white shadow-sm transition duration-300 ease-in-out hover:bg-[#B04B68]"
+                  showTriggerIcon={false}
+                />
                 <Button asChild variant="ghost" size="icon" className="h-10 w-10 hover:bg-slate-100" title="Mi perfil">
                   <Link to="/profile">
                     <User className="h-6 w-6 text-slate-700" />
@@ -284,7 +289,12 @@ export default function ProductDetail() {
                         <span className="text-sm font-medium">Cerrar sesión</span>
                       </Button>
                       <div className="py-1">
-                        <AddProductForm onProductAdded={() => undefined} />
+                        <AddProductForm
+                          onProductAdded={() => undefined}
+                          triggerLabel="Quiero vender"
+                          triggerClassName="h-12 w-full rounded-xl bg-[#C05673] px-4 text-white shadow-sm transition-colors hover:bg-[#B04B68]"
+                          showTriggerIcon={false}
+                        />
                       </div>
                     </>
                   )}

@@ -17,9 +17,17 @@ import { toast } from "sonner";
 
 interface AddProductFormProps {
   onProductAdded: () => void;
+  triggerLabel?: string;
+  triggerClassName?: string;
+  showTriggerIcon?: boolean;
 }
 
-export function AddProductForm({ onProductAdded }: AddProductFormProps) {
+export function AddProductForm({
+  onProductAdded,
+  triggerLabel = 'Nuevo Producto',
+  triggerClassName,
+  showTriggerIcon = true,
+}: AddProductFormProps) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -159,7 +167,7 @@ export function AddProductForm({ onProductAdded }: AddProductFormProps) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button
-          className="h-10 bg-[#C05673] text-white hover:bg-[#B04B68]"
+          className={triggerClassName || "h-10 bg-[#C05673] text-white hover:bg-[#B04B68]"}
           onClick={(event) => {
             if (!canOpenPublishFlow()) {
               event.preventDefault();
@@ -169,7 +177,8 @@ export function AddProductForm({ onProductAdded }: AddProductFormProps) {
             setOpen(true);
           }}
         >
-          <PlusCircle className="mr-2 h-4 w-4" /> Nuevo Producto
+          {showTriggerIcon && <PlusCircle className="mr-2 h-4 w-4" />}
+          {triggerLabel}
         </Button>
       </DialogTrigger>
       

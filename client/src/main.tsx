@@ -11,6 +11,8 @@ const App = lazy(() => import('./App.tsx'))
 const ProductDetail = lazy(() => import('./pages/ProductDetail'))
 const Login = lazy(() => import('./pages/Login.tsx'))
 const Register = lazy(() => import('./pages/Register.tsx'))
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword.tsx'))
+const ResetPassword = lazy(() => import('./pages/ResetPassword.tsx'))
 const Profile = lazy(() => import('./pages/Profile.tsx'))
 const Checkout = lazy(() => import('./pages/Checkout.tsx'))
 const PaymentConfirmation = lazy(() => import('./pages/PaymentConfirmation.tsx'))
@@ -64,6 +66,8 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
               <Route path="/product/:id" element={<ProductDetail />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/checkout" element={<Checkout />} />
               <Route path="/payment-confirmation" element={<PaymentConfirmation />} />

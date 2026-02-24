@@ -140,7 +140,10 @@ export default function Profile() {
       form.append('image', file);
 
       const response = await api.post('/products/upload-image', form);
-      const imageUrl = response.data.imageUrl;
+      const imageUrl = response.data?.imageUrl || response.data?.url;
+      if (!imageUrl) {
+        throw new Error('No se recibió URL de imagen desde el servidor');
+      }
       setFormData({ ...formData, profile_image: imageUrl });
       toast.success('Imagen subida correctamente');
     } catch (err) {

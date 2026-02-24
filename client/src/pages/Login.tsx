@@ -82,6 +82,11 @@ export default function Login() {
                       Crear cuenta
                     </Link>
                   </SheetClose>
+                  <SheetClose asChild>
+                    <Link to="/forgot-password" className="rounded-lg border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                      Olvidé mi contraseña
+                    </Link>
+                  </SheetClose>
                 </div>
               </SheetContent>
             </Sheet>
@@ -112,6 +117,9 @@ export default function Login() {
             <div className="space-y-2">
               <div className="flex justify-between items-center">
                 <Label htmlFor="password">Contraseña</Label>
+                <Link to="/forgot-password" className="text-xs font-semibold text-[#9B5F71] hover:underline">
+                  ¿Olvidaste tu contraseña?
+                </Link>
               </div>
               <div className="relative">
                 <Input 

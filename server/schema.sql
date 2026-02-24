@@ -8,6 +8,8 @@ CREATE TABLE IF NOT EXISTS users (
   password VARCHAR(255) NOT NULL,
   mercado_pago_account_id VARCHAR(255),
   payout_automation_enabled BOOLEAN DEFAULT true NOT NULL,
+  password_reset_token_hash VARCHAR(255),
+  password_reset_expires_at TIMESTAMP,
   bio TEXT,
   phone VARCHAR(50),
   profile_image TEXT,

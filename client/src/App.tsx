@@ -161,7 +161,12 @@ export default function App() {
               </>
             ) : (
               <>
-                <AddProductForm onProductAdded={refetch} />
+                <AddProductForm
+                  onProductAdded={refetch}
+                  triggerLabel="Quiero vender"
+                  triggerClassName="h-10 rounded-lg bg-[#C05673] px-6 font-semibold text-white shadow-sm transition duration-300 ease-in-out hover:bg-[#B04B68]"
+                  showTriggerIcon={false}
+                />
                 <Button asChild variant="ghost" size="icon" className="h-10 w-10 hover:bg-slate-100" title="Mi perfil">
                   <Link to="/profile">
                     <User className="h-6 w-6 text-slate-700" />
@@ -273,7 +278,12 @@ export default function App() {
                   ) : (
                     <>
                       <div className="py-1">
-                        <AddProductForm onProductAdded={refetch} />
+                        <AddProductForm
+                          onProductAdded={refetch}
+                          triggerLabel="Quiero vender"
+                          triggerClassName="h-12 w-full rounded-xl bg-[#C05673] px-4 text-white shadow-sm transition-colors hover:bg-[#B04B68]"
+                          showTriggerIcon={false}
+                        />
                       </div>
                     </>
                   )}
@@ -300,9 +310,18 @@ export default function App() {
                 Descubre piezas únicas o publica tu catálogo en minutos. Experiencia segura, rápida y con estilo boutique.
               </p>
               <div className="mt-8 flex flex-wrap items-center justify-center gap-3 lg:justify-start">
-                <Button asChild className="h-11 rounded-full bg-[#C05673] px-8 text-white hover:bg-[#B04B68]">
-                  <Link to={isAuthenticated ? "/" : "/login"}>Quiero vender</Link>
-                </Button>
+                {isAuthenticated ? (
+                  <AddProductForm
+                    onProductAdded={refetch}
+                    triggerLabel="Quiero vender"
+                    triggerClassName="h-11 rounded-full bg-[#C05673] px-8 text-white hover:bg-[#B04B68]"
+                    showTriggerIcon={false}
+                  />
+                ) : (
+                  <Button asChild className="h-11 rounded-full bg-[#C05673] px-8 text-white hover:bg-[#B04B68]">
+                    <Link to="/login">Quiero vender</Link>
+                  </Button>
+                )}
                 <Button 
                   onClick={() => document.getElementById("productos")?.scrollIntoView({ behavior: "smooth" })}
                   variant="outline" 
@@ -388,7 +407,12 @@ export default function App() {
               <p className="mt-2 text-slate-500">Parece que aún no has subido ningún producto.</p>
               <div className="mt-6">
                 {isAuthenticated ? (
-                  <AddProductForm onProductAdded={refetch} />
+                  <AddProductForm
+                    onProductAdded={refetch}
+                    triggerLabel="Quiero vender"
+                    triggerClassName="h-10 rounded-full bg-[#C05673] px-6 font-semibold text-white shadow-sm transition duration-300 ease-in-out hover:bg-[#B04B68]"
+                    showTriggerIcon={false}
+                  />
                 ) : (
                   <Button asChild className="h-10 rounded-full bg-[#C05673] px-6 font-semibold text-white shadow-sm transition duration-300 ease-in-out hover:bg-[#B04B68]">
                     <Link to="/login">Inicia sesión para vender</Link>

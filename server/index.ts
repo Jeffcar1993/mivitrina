@@ -12,6 +12,7 @@ import cartRoutes from './routes/cartRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { createHash, randomBytes } from 'crypto';
 import { authMiddleware, type AuthRequest } from './middleware/auth.js';
 import passport from './config/passport.js';
 import { configurePassport } from './config/passport.js';
@@ -21,6 +22,7 @@ dotenv.config();
 const app = express();
 const DEFAULT_JWT_SECRET = 'tu-secreto-super-seguro-cambiar-en-produccion';
 const JWT_SECRET = process.env.JWT_SECRET || DEFAULT_JWT_SECRET;
+const PASSWORD_RESET_TOKEN_TTL_MS = 1000 * 60 * 30;
 
 if (process.env.NODE_ENV === 'production' && JWT_SECRET === DEFAULT_JWT_SECRET) {
   throw new Error('JWT_SECRET inseguro: configura un secreto fuerte para producción');
@@ -85,6 +87,18 @@ const validatePassword = (password: string): { isValid: boolean; errors: string[
     isValid: errors.length === 0,
     errors
   };
+};
+
+const ensurePasswordResetColumns = async (): Promise<void> => {
+  await query('ALTER TABLE users ADD COLUMN IF NOT EXISTS password_reset_token_hash VARCHAR(255)');
+  await query('ALTER TABLE users ADD COLUMN IF NOT EXISTS password_reset_expires_at TIMESTAMP');
+};
+
+const buildPasswordResetToken = (): { rawToken: string; tokenHash: string; expiresAt: Date } => {
+  const rawToken = randomBytes(32).toString('hex');
+  const tokenHash = createHash('sha256').update(rawToken).digest('hex');
+  const expiresAt = new Date(Date.now() + PASSWORD_RESET_TOKEN_TTL_MS);
+  return { rawToken, tokenHash, expiresAt };
 };
 
 // Configurar Passport
@@ -228,6 +242,103 @@ app.post('/api/auth/login', async (req, res) => {
     res.json({ user: userFields, token });
   } catch (err) {
     res.status(500).json({ error: "Error en el servidor" });
+  }
+});
+
+app.post('/api/auth/forgot-password', async (req, res) => {
+  const normalizedEmail = String(req.body?.email || '').trim().toLowerCase();
+
+  if (!normalizedEmail) {
+    return res.status(400).json({ error: 'Debes ingresar tu correo electrónico' });
+  }
+
+  try {
+    await ensurePasswordResetColumns();
+
+    const userResult = await query(
+      'SELECT id FROM users WHERE LOWER(email) = LOWER($1) LIMIT 1',
+      [normalizedEmail]
+    );
+
+    let resetUrl: string | undefined;
+    if (userResult.rows.length > 0) {
+      const userId = Number(userResult.rows[0].id);
+      const { rawToken, tokenHash, expiresAt } = buildPasswordResetToken();
+
+      await query(
+        `UPDATE users
+         SET password_reset_token_hash = $1,
+             password_reset_expires_at = $2
+         WHERE id = $3`,
+        [tokenHash, expiresAt, userId]
+      );
+
+      const clientBaseUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+      resetUrl = `${clientBaseUrl}/reset-password?token=${rawToken}`;
+    }
+
+    return res.json({
+      success: true,
+      message: 'Si el correo está registrado, enviamos instrucciones para recuperar tu contraseña.',
+      resetUrl: process.env.NODE_ENV !== 'production' ? resetUrl : undefined,
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'No se pudo iniciar la recuperación de contraseña' });
+  }
+});
+
+app.post('/api/auth/reset-password', async (req, res) => {
+  const token = String(req.body?.token || '').trim();
+  const newPassword = String(req.body?.password || '');
+
+  if (!token || !newPassword) {
+    return res.status(400).json({ error: 'Token y nueva contraseña son obligatorios' });
+  }
+
+  const passwordValidation = validatePassword(newPassword);
+  if (!passwordValidation.isValid) {
+    return res.status(400).json({
+      error: 'La contraseña no cumple con los requisitos de seguridad',
+      requirements: passwordValidation.errors,
+    });
+  }
+
+  try {
+    await ensurePasswordResetColumns();
+
+    const tokenHash = createHash('sha256').update(token).digest('hex');
+    const userResult = await query(
+      `SELECT id
+       FROM users
+       WHERE password_reset_token_hash = $1
+         AND password_reset_expires_at IS NOT NULL
+         AND password_reset_expires_at > CURRENT_TIMESTAMP
+       LIMIT 1`,
+      [tokenHash]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(400).json({ error: 'El enlace de recuperación es inválido o expiró' });
+    }
+
+    const userId = Number(userResult.rows[0].id);
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+    await query(
+      `UPDATE users
+       SET password = $1,
+           password_reset_token_hash = NULL,
+           password_reset_expires_at = NULL
+       WHERE id = $2`,
+      [hashedPassword, userId]
+    );
+
+    return res.json({ success: true, message: 'Contraseña actualizada correctamente' });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'No se pudo restablecer la contraseña' });
   }
 });
 
