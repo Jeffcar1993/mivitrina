@@ -329,6 +329,38 @@ router.patch('/:orderId/status', async (req: Request, res: Response) => {
   }
 });
 
+router.get('/by-number/:orderNumber', async (req: Request, res: Response) => {
+  const { orderNumber } = req.params;
+
+  try {
+    const result = await query(
+      `SELECT
+        id,
+        order_number,
+        customer_name,
+        customer_email,
+        total_amount,
+        status,
+        created_at,
+        updated_at
+       FROM orders
+       WHERE order_number = $1
+       LIMIT 1`,
+      [orderNumber]
+    );
+
+    if (result.rows.length === 0) {
+      res.status(404).json({ error: 'Orden no encontrada' });
+      return;
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error al consultar orden por número:', error);
+    res.status(500).json({ error: 'Error al consultar la orden' });
+  }
+});
+
 // ==================== FINANZAS / COMISIONES ====================
 
 // Resumen global de monetización

@@ -220,8 +220,29 @@ router.put('/:orderNumber/confirm-payment', async (req: Request, res: Response) 
         payoutSummary,
       });
     } else {
+      const existingOrderResult = await query(
+        'SELECT id, status FROM orders WHERE order_number = $1 LIMIT 1',
+        [orderNumber]
+      );
+
+      if (existingOrderResult.rows.length === 0) {
+        await query('ROLLBACK');
+        res.status(404).json({ error: 'Orden no encontrada' });
+        return;
+      }
+
+      if (existingOrderResult.rows[0].status === 'completed') {
+        await query('ROLLBACK');
+        res.json({
+          success: true,
+          message: 'La orden ya estaba confirmada previamente',
+          payoutSummary: { processed: 0, paid: 0, failed: 0, skipped: 0 },
+        });
+        return;
+      }
+
       await query('ROLLBACK');
-      res.status(404).json({ error: 'Orden no encontrada o ya procesada' });
+      res.status(409).json({ error: 'No se pudo confirmar la orden en este estado' });
     }
   } catch (error) {
     await query('ROLLBACK');

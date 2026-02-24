@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import api from '../lib/axios';
 import { useCart } from '../context/cartContext';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -32,6 +33,7 @@ const normalizeOrder = (data: unknown): OrderData => {
 export default function PaymentConfirmation() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { clearCart } = useCart();
   const [order, setOrder] = useState<OrderData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -47,35 +49,35 @@ export default function PaymentConfirmation() {
     const verifyPayment = async () => {
       if (!externalReference || isCleared) return; // Si ya se limpió, no hacer nada
 
-  try {
-      if (paymentStatus === 'approved') {
-        // 1. Primero confirmamos en el servidor
-        await api.put(`/orders/${externalReference}/confirm-payment`);
+      try {
+        if (paymentStatus === 'approved') {
+          // 1. Primero confirmamos en el servidor
+          await api.put(`/payments/${externalReference}/confirm-payment`);
+          await queryClient.invalidateQueries({ queryKey: ['products'] });
         
-        // 2. Si la confirmación fue exitosa, limpiamos el carrito
-        clearCart(); 
-        setIsCleared(true); // Marcamos como limpio
-        
-        // 3. Disparar evento personalizado para que otras páginas lo escuchen (como Profile)
-        window.dispatchEvent(new CustomEvent('purchaseCompleted', { 
-          detail: { timestamp: Date.now() } 
-        }));
+          // 2. Si la confirmación fue exitosa, limpiamos el carrito
+          clearCart();
+          setIsCleared(true); // Marcamos como limpio
+          
+          // 3. Disparar evento personalizado para que otras páginas lo escuchen (como Profile)
+          window.dispatchEvent(new CustomEvent('purchaseCompleted', {
+            detail: { timestamp: Date.now() }
+          }));
+        }
+
+        // 4. Obtenemos la orden para mostrar los datos en la UI
+        const response = await api.get(`/orders/by-number/${externalReference}`);
+        setOrder(normalizeOrder(response.data));
+      } catch (err) {
+        console.error('Error al verificar pago:', err);
+        setError('Hubo un error al procesar tu compra');
+      } finally {
+        setLoading(false);
       }
+    };
 
-      // 3. Obtenemos la orden para mostrar los datos en la UI
-      const response = await api.get(`/orders/${externalReference}`);
-      setOrder(normalizeOrder(response.data));
-      
-    } catch (err) {
-      console.error('Error al verificar pago:', err);
-      setError('Hubo un error al procesar tu compra');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  verifyPayment();
-}, [externalReference, paymentStatus, clearCart, isCleared]); // Añadido isCleared
+    verifyPayment();
+  }, [externalReference, paymentStatus, clearCart, isCleared, queryClient]); // Añadido isCleared
 
   useEffect(() => {
     if (paymentStatus !== 'approved' || !order) return;
