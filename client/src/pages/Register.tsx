@@ -70,7 +70,18 @@ export default function Register() {
       window.location.reload(); 
     } catch (err) {
       const axiosError = err as AxiosError<{ error?: string }>;
-      toast.error(axiosError.response?.data?.error || "Error al registrarse");
+      const backendMessage = axiosError.response?.data?.error;
+      const statusCode = axiosError.response?.status;
+
+      if (statusCode === 409 && formData.email.trim().length > 0) {
+        const normalizedMessage = String(backendMessage || '').toLowerCase();
+        if (normalizedMessage.includes('email')) {
+          toast.error('El email ya ha sido registrado');
+          return;
+        }
+      }
+
+      toast.error(backendMessage || "Error al registrarse");
     } finally {
       setLoading(false);
     }

@@ -35,10 +35,6 @@ router.post('/create-preference', async (req: Request, res: Response) => {
     try {
       const preference = new Preference(client);
       
-      // Log de los items que se envían
-      console.log('Items a enviar a Mercado Pago:', JSON.stringify(items, null, 2));
-      console.log('Payer a enviar:', JSON.stringify(payer, null, 2));
-      
       const preferenceData = await preference.create({
         body: {
           // Los datos país y moneda se determinan automáticamente por el token de acceso

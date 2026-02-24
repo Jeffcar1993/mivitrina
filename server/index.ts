@@ -137,7 +137,10 @@ app.post('/api/auth/register', async (req, res) => {
   const { username, email, password } = req.body;
 
   try {
-    if (!username || !email || !password) {
+    const normalizedUsername = String(username || '').trim();
+    const normalizedEmail = String(email || '').trim().toLowerCase();
+
+    if (!normalizedUsername || !normalizedEmail || !password) {
       return res.status(400).json({ error: "Completa todos los campos" });
     }
 
@@ -151,11 +154,19 @@ app.post('/api/auth/register', async (req, res) => {
     }
 
     const existing = await query(
-      'SELECT id FROM users WHERE email = $1 OR username = $2',
-      [email, username]
+      'SELECT email, username FROM users WHERE LOWER(email) = LOWER($1) OR LOWER(username) = LOWER($2)',
+      [normalizedEmail, normalizedUsername]
     );
     if (existing.rows.length > 0) {
-      return res.status(409).json({ error: "El usuario o email ya existen." });
+      const duplicateEmail = existing.rows.some(
+        (row) => String(row.email || '').toLowerCase() === normalizedEmail
+      );
+
+      if (duplicateEmail) {
+        return res.status(409).json({ error: 'El email ya ha sido registrado' });
+      }
+
+      return res.status(409).json({ error: 'El nombre de usuario ya existe' });
     }
 
     // 1. Encriptar contraseña
@@ -165,7 +176,7 @@ app.post('/api/auth/register', async (req, res) => {
     // 2. Guardar en la base de datos
     const result = await query(
       'INSERT INTO users (username, email, password) VALUES ($1, $2, $3) RETURNING id, username, email',
-      [username, email, hashedPassword]
+      [normalizedUsername, normalizedEmail, hashedPassword]
     );
 
     const user = result.rows[0];
@@ -178,7 +189,7 @@ app.post('/api/auth/register', async (req, res) => {
     console.error(err);
     const error = err as { code?: string };
     if (error?.code === '23505') {
-      return res.status(409).json({ error: "El usuario o email ya existen." });
+      return res.status(409).json({ error: "El email ya ha sido registrado" });
     }
     if (error?.code === '42P01') {
       return res.status(500).json({ error: "La tabla de usuarios no existe. Revisa la base de datos." });
@@ -364,6 +375,4 @@ app.delete('/api/products/:id', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`🚀 Servidor TS corriendo en http://localhost:${PORT}`);
-});
+app.listen(PORT);

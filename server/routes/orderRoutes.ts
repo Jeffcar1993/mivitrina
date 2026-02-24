@@ -124,6 +124,12 @@ router.post('/create', async (req: Request, res: Response) => {
         return;
       }
 
+      if (userId && sellerId === userId) {
+        await query('ROLLBACK');
+        res.status(409).json({ error: 'No puedes comprar tus propios productos' });
+        return;
+      }
+
       if (!payoutAutomationEnabled) {
         await query('ROLLBACK');
         res.status(409).json({

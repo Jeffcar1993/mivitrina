@@ -110,12 +110,10 @@ export default function Profile() {
     };
 
     const handleProductPublished = () => {
-      console.log('Producto publicado, refrescando lista de productos...');
       fetchUserProducts();
     };
 
     const handlePurchaseCompleted = () => {
-      console.log('Compra completada, refrescando lista de órdenes...');
       fetchUserOrders();
     };
 

@@ -60,8 +60,6 @@ export default function PaymentConfirmation() {
         window.dispatchEvent(new CustomEvent('purchaseCompleted', { 
           detail: { timestamp: Date.now() } 
         }));
-        
-        console.log("✅ Carrito limpiado y pago confirmado");
       }
 
       // 3. Obtenemos la orden para mostrar los datos en la UI

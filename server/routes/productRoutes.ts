@@ -25,9 +25,6 @@ const ensureSellerRatingsTable = async (): Promise<void> => {
 // Usamos Promise<void> porque la función no retorna un valor, sino que responde al cliente
 router.post('/', authMiddleware, upload.array('images', 4), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    console.log("BODY RECIBIDO:", req.body); // Esto nos dirá si title llega o no
-    console.log("ARCHIVOS RECIBIDOS:", Array.isArray(req.files) && req.files.length > 0 ? "SÍ" : "NO");
-
     const { title, description, price, category_id, quantity } = req.body;
     const userId = req.userId; // Viene del middleware de auth
 
