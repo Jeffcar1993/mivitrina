@@ -216,20 +216,29 @@ app.post('/api/auth/login', async (req, res) => {
   const { email, password } = req.body;
 
   try {
-    if (!email || !password) {
+    const normalizedEmail = String(email || '').trim().toLowerCase();
+
+    if (!normalizedEmail || !password) {
       return res.status(400).json({ error: "Completa todos los campos" });
     }
 
     // 1. Buscar usuario
-    const result = await query('SELECT * FROM users WHERE email = $1', [email]);
+    const result = await query('SELECT * FROM users WHERE LOWER(email) = LOWER($1)', [normalizedEmail]);
     if (result.rows.length === 0) {
       return res.status(401).json({ error: "Email o contraseña incorrectos" });
     }
 
     const user = result.rows[0];
+    const passwordHash = typeof user.password === 'string' ? user.password.trim() : '';
+
+    if (!passwordHash) {
+      return res.status(401).json({
+        error: 'Esta cuenta no tiene contraseña local. Usa Google o solicita recuperación de contraseña.',
+      });
+    }
 
     // 2. Verificar contraseña
-    const validPassword = await bcrypt.compare(password, user.password);
+    const validPassword = await bcrypt.compare(password, passwordHash);
     if (!validPassword) {
       return res.status(401).json({ error: "Email o contraseña incorrectos" });
     }
@@ -241,6 +250,7 @@ app.post('/api/auth/login', async (req, res) => {
     const { password: _, ...userFields } = user;
     res.json({ user: userFields, token });
   } catch (err) {
+    console.error('Error en login:', err);
     res.status(500).json({ error: "Error en el servidor" });
   }
 });
@@ -309,17 +319,33 @@ app.post('/api/auth/reset-password', async (req, res) => {
 
     const tokenHash = createHash('sha256').update(token).digest('hex');
     const userResult = await query(
-      `SELECT id
+      `SELECT id, password_reset_expires_at
        FROM users
        WHERE password_reset_token_hash = $1
-         AND password_reset_expires_at IS NOT NULL
-         AND password_reset_expires_at > CURRENT_TIMESTAMP
        LIMIT 1`,
       [tokenHash]
     );
 
     if (userResult.rows.length === 0) {
-      return res.status(400).json({ error: 'El enlace de recuperación es inválido o expiró' });
+      return res.status(400).json({ error: 'El enlace de recuperación es inválido' });
+    }
+
+    const expiresAt = userResult.rows[0].password_reset_expires_at as Date | string | null;
+    const expiresAtDate = expiresAt ? new Date(expiresAt) : null;
+    const isExpired = !expiresAtDate || Number.isNaN(expiresAtDate.getTime()) || expiresAtDate.getTime() <= Date.now();
+
+    if (isExpired) {
+      await query(
+        `UPDATE users
+         SET password_reset_token_hash = NULL,
+             password_reset_expires_at = NULL
+         WHERE id = $1`,
+        [userResult.rows[0].id]
+      );
+
+      return res.status(400).json({
+        error: 'El enlace de recuperación expiró. Solicita uno nuevo.',
+      });
     }
 
     const userId = Number(userResult.rows[0].id);
