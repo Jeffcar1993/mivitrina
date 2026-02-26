@@ -424,7 +424,9 @@ export default function App() {
             <>
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {filteredProducts.map((product) => {
-                  const isOwnProduct = currentUserId === product.user_id;
+                  const hasValidOwner = product.user_id !== undefined && product.user_id !== null;
+                  const hasCurrentUser = currentUserId !== null && currentUserId !== undefined;
+                  const isOwnProduct = isAuthenticated && hasCurrentUser && hasValidOwner && Number(currentUserId) === Number(product.user_id);
                   const isOutOfStock = Number(product.quantity ?? 0) <= 0;
                   const isBuyDisabled = isOutOfStock || isOwnProduct;
 

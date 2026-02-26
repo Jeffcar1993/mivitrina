@@ -240,7 +240,11 @@ router.get('/:id/seller-rating', async (req: Request, res: Response): Promise<vo
     const sellerId = Number(sellerQuery.rows[0].user_id);
 
     if (!sellerId) {
-      res.status(400).json({ error: 'El producto no tiene vendedor asociado' });
+      res.json({
+        sellerId: null,
+        averageRating: 0,
+        totalRatings: 0,
+      });
       return;
     }
 
@@ -292,7 +296,10 @@ router.get('/:id/seller-rating/my', authMiddleware, async (req: AuthRequest, res
     const sellerId = Number(sellerQuery.rows[0].user_id);
 
     if (!sellerId) {
-      res.status(400).json({ error: 'El producto no tiene vendedor asociado' });
+      res.json({
+        sellerId: null,
+        myRating: null,
+      });
       return;
     }
 
