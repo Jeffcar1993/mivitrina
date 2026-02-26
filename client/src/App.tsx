@@ -423,16 +423,20 @@ export default function App() {
           ) : (
             <>
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {filteredProducts.map((product) => (
+                {filteredProducts.map((product) => {
+                  const isOwnProduct = currentUserId === product.user_id;
+                  const isOutOfStock = Number(product.quantity ?? 0) <= 0;
+                  const isBuyDisabled = isOutOfStock || isOwnProduct;
+
+                  return (
                   <Card key={product.id} className="group relative flex flex-col overflow-hidden border border-slate-200 bg-white transition-all duration-300 hover:-translate-y-1 hover:border-slate-300">
-                  
                     {/* Imagen con Link al Detalle */}
-                    <Link to={`/product/${product.id}`} className="relative aspect-[4/5] overflow-hidden bg-slate-100 block">
+                    <Link to={`/product/${product.id}`} className="relative aspect-[3/4] sm:aspect-[4/5] overflow-hidden bg-slate-50 block">
                       <img
                         src={product.image_url}
                         alt={product.title}
                         loading="lazy"
-                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        className="h-full w-full object-contain p-2 sm:p-3 transition-transform duration-500 group-hover:scale-[1.02]"
                       />
                       <div className="absolute inset-0 bg-black/5 opacity-0 transition-opacity group-hover:opacity-100" />
                       <Badge className="absolute left-3 top-3 bg-white/90 text-slate-900 backdrop-blur shadow-sm hover:bg-white">
@@ -463,12 +467,13 @@ export default function App() {
                     <CardFooter className="mt-auto flex items-center gap-2 p-5 pt-4">
                       <Button
                         onClick={() => addToCart(product)}
+                        disabled={isBuyDisabled}
                         size="sm"
-                        className="flex-1 rounded-full bg-[#C05673] text-white shadow-sm transition-all hover:bg-[#B04B68]"
-                        title="Añadir al carrito"
+                        className="flex-1 rounded-full bg-[#C05673] text-white shadow-sm transition-all hover:bg-[#B04B68] disabled:opacity-60 disabled:cursor-not-allowed"
+                        title={isOwnProduct ? 'No puedes comprar tus propios productos' : 'Añadir al carrito'}
                       >
                         <Plus className="h-4 w-4 mr-2" />
-                        Comprar
+                        {isOwnProduct ? 'Tu producto' : isOutOfStock ? 'Sin stock' : 'Comprar'}
                       </Button>
                       
                       {/* Botón Borrar - solo para el creador */}
@@ -484,7 +489,8 @@ export default function App() {
                       )}
                     </CardFooter>
                   </Card>
-                ))}
+                  );
+                })}
               </div>
 
               {hasNextPage && (

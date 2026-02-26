@@ -334,7 +334,7 @@ export default function ProductDetail() {
               <img 
                 src={selectedImage || product.image_url} 
                 alt={product.title} 
-                className="w-full h-auto min-h-[400px] object-cover transition-transform duration-1000 group-hover:scale-105"
+                className="w-full aspect-[3/4] md:aspect-[4/5] object-contain bg-slate-50 p-3 md:p-6 transition-transform duration-700 group-hover:scale-[1.02]"
               />
 
               {productImages.length > 1 && (
@@ -372,7 +372,7 @@ export default function ProductDetail() {
                       idx === currentImageIndex ? "ring-[#C05673]" : "ring-slate-100 hover:ring-[#EAD1D9]"
                     }`}
                   >
-                    <img src={img} alt={`${product.title} ${idx + 1}`} className="h-full w-full object-cover" />
+                    <img src={img} alt={`${product.title} ${idx + 1}`} className="h-full w-full object-contain bg-slate-50 p-1" />
                   </button>
                 ))}
               </div>
