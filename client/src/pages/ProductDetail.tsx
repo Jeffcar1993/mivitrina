@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import api from "../lib/axios";
 import type { Product } from "../types";
 import { useCart } from "../context/cartContext";
+import { applySeo, removeJsonLd, upsertJsonLd } from "../lib/seo";
 
 // Componentes de shadcn/ui
 import { Button } from "@/components/ui/button";
@@ -113,6 +114,46 @@ export default function ProductDetail() {
       })
       .finally(() => setLoading(false));
   }, [id, fetchSellerRating]);
+
+  useEffect(() => {
+    if (!product || !id) return;
+
+    const canonicalPath = `/product/${id}`;
+    const imageUrl = product.image_url || product.images?.[0] || '';
+    const title = product.title || 'Producto';
+    const description = product.description || 'Producto disponible en MiVitrina';
+
+    applySeo({
+      title,
+      description,
+      canonicalPath,
+      ogTitle: `${title} | MiVitrina`,
+      ogDescription: description,
+      ogImage: imageUrl,
+    });
+
+    const priceNumber = Number(product.price || 0);
+    upsertJsonLd('product-jsonld', {
+      '@context': 'https://schema.org',
+      '@type': 'Product',
+      name: title,
+      description,
+      image: imageUrl ? [imageUrl, ...(product.images || []).filter((img) => img !== imageUrl)] : product.images || [],
+      sku: String(product.id),
+      category: product.category_name || 'General',
+      offers: {
+        '@type': 'Offer',
+        priceCurrency: 'COP',
+        price: Number.isFinite(priceNumber) ? priceNumber.toFixed(2) : '0.00',
+        availability: Number(product.quantity ?? 0) > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+        url: window.location.href,
+      },
+    });
+
+    return () => {
+      removeJsonLd('product-jsonld');
+    };
+  }, [id, product]);
 
   const changeImage = (direction: "prev" | "next") => {
     if (productImages.length <= 1) return;
@@ -334,6 +375,9 @@ export default function ProductDetail() {
               <img 
                 src={selectedImage || product.image_url} 
                 alt={product.title} 
+                loading="eager"
+                fetchPriority="high"
+                decoding="async"
                 className="w-full aspect-[3/4] md:aspect-[4/5] object-contain bg-slate-50 p-3 md:p-6 transition-transform duration-700 group-hover:scale-[1.02]"
               />
 
@@ -372,7 +416,7 @@ export default function ProductDetail() {
                       idx === currentImageIndex ? "ring-[#C05673]" : "ring-slate-100 hover:ring-[#EAD1D9]"
                     }`}
                   >
-                    <img src={img} alt={`${product.title} ${idx + 1}`} className="h-full w-full object-contain bg-slate-50 p-1" />
+                    <img src={img} alt={`${product.title} ${idx + 1}`} loading="lazy" decoding="async" className="h-full w-full object-contain bg-slate-50 p-1" />
                   </button>
                 ))}
               </div>

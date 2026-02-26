@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "prebuild": "node scripts/generate-seo-files.mjs",
     "build": "tsc -b && vite build",
+    "postbuild": "node scripts/prerender-public-routes.mjs",
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run"

@@ -5,6 +5,7 @@ import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { CartProvider } from './context/cartContext'
 import { Toaster } from "@/components/ui/sonner"
+import { applySeo } from './lib/seo'
 import './index.css'
 
 const App = lazy(() => import('./App.tsx'))
@@ -37,6 +38,78 @@ function ScrollToTop() {
   return null
 }
 
+function RouteSeo() {
+  const { pathname } = useLocation()
+
+  React.useEffect(() => {
+    const staticSeoMap: Record<string, { title: string; description: string }> = {
+      '/': {
+        title: 'Inicio',
+        description: 'Compra y vende productos de forma segura en MiVitrina.',
+      },
+      '/login': {
+        title: 'Iniciar sesión',
+        description: 'Accede a tu cuenta para comprar y vender en MiVitrina.',
+      },
+      '/register': {
+        title: 'Crear cuenta',
+        description: 'Regístrate en MiVitrina y empieza a vender hoy mismo.',
+      },
+      '/como-funciona': {
+        title: 'Cómo funciona',
+        description: 'Conoce cómo comprar y vender en MiVitrina paso a paso.',
+      },
+      '/info-vender': {
+        title: 'Información para vender',
+        description: 'Guía para vendedores de MiVitrina y cobros automáticos.',
+      },
+      '/info-comprar': {
+        title: 'Información para comprar',
+        description: 'Guía para compradores con pagos y protección en MiVitrina.',
+      },
+      '/politica-de-privacidad': {
+        title: 'Política de privacidad',
+        description: 'Política de privacidad y tratamiento de datos de MiVitrina.',
+      },
+      '/politica-de-cookies': {
+        title: 'Política de cookies',
+        description: 'Información sobre cookies y tecnologías de seguimiento.',
+      },
+      '/terminos-y-condiciones': {
+        title: 'Términos y condiciones',
+        description: 'Términos y condiciones de uso de MiVitrina.',
+      },
+    }
+
+    if (pathname.startsWith('/product/')) {
+      applySeo({
+        title: 'Detalle de producto',
+        description: 'Consulta información, precio y disponibilidad del producto.',
+        canonicalPath: pathname,
+      })
+      return
+    }
+
+    const routeSeo = staticSeoMap[pathname]
+    if (routeSeo) {
+      applySeo({
+        title: routeSeo.title,
+        description: routeSeo.description,
+        canonicalPath: pathname,
+      })
+      return
+    }
+
+    applySeo({
+      title: 'MiVitrina',
+      description: 'Marketplace confiable para comprar y vender productos en Colombia.',
+      canonicalPath: pathname,
+    })
+  }, [pathname])
+
+  return null
+}
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -53,6 +126,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       <CartProvider>
         <BrowserRouter>
           <ScrollToTop />
+          <RouteSeo />
           <Suspense
             fallback={
               <div className="flex h-screen w-full flex-col items-center justify-center bg-white">
