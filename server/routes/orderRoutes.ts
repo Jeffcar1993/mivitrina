@@ -7,6 +7,7 @@ const router = express.Router();
 
 const getPlatformFeePercentage = (): number => Number(process.env.PLATFORM_FEE_PERCENTAGE || 3);
 const getAdminEmail = (): string => String(process.env.ADMIN_EMAIL || '').trim().toLowerCase();
+const getDefaultCurrency = (): string => String(process.env.DEFAULT_CURRENCY || 'COP').trim().toUpperCase();
 const JWT_SECRET = process.env.JWT_SECRET || 'tu-secreto-super-seguro-cambiar-en-produccion';
 
 const roundMoney = (value: number): number => Math.round(value * 100) / 100;
@@ -218,10 +219,11 @@ router.post('/create', async (req: Request, res: Response) => {
         platform_fee_percentage,
         platform_fee_amount,
         seller_net_amount,
+        currency_id,
         status
       )
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-       RETURNING id, order_number, total_amount, platform_fee_percentage, platform_fee_amount, seller_net_amount, status`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+       RETURNING id, order_number, total_amount, platform_fee_percentage, platform_fee_amount, seller_net_amount, currency_id, status`,
       [
         orderNumber,
         userId,
@@ -234,7 +236,8 @@ router.post('/create', async (req: Request, res: Response) => {
         getPlatformFeePercentage(),
         computedPlatformFeeAmount,
         computedSellerNetAmount,
-        'pending',
+        getDefaultCurrency(),
+        'pendiente_de_pago',
       ]
     );
 
@@ -280,6 +283,8 @@ router.post('/create', async (req: Request, res: Response) => {
       platformFeePercentage: Number(orderResult.rows[0].platform_fee_percentage),
       platformFeeAmount: Number(orderResult.rows[0].platform_fee_amount),
       sellerNetAmount: Number(orderResult.rows[0].seller_net_amount),
+      currencyId: String(orderResult.rows[0].currency_id || getDefaultCurrency()),
+      status: String(orderResult.rows[0].status || 'pendiente_de_pago'),
     });
   } catch (error) {
     await query('ROLLBACK');
@@ -379,7 +384,7 @@ router.get('/finance/summary', authMiddleware, async (req: AuthRequest, res: Res
         COALESCE(SUM(o.platform_fee_amount), 0)::numeric AS platform_revenue,
         COALESCE(SUM(o.seller_net_amount), 0)::numeric AS seller_net_total
       FROM orders o
-      WHERE o.status = 'completed'
+      WHERE o.status IN ('pagado', 'completed')
         AND ($1::timestamptz IS NULL OR o.created_at >= $1::timestamptz)
         AND ($2::timestamptz IS NULL OR o.created_at <= $2::timestamptz)
       `,
@@ -427,7 +432,7 @@ router.get('/finance/sellers', authMiddleware, async (req: AuthRequest, res: Res
       JOIN orders o ON o.id = oi.order_id
       JOIN users u ON u.id = oi.seller_id
       LEFT JOIN seller_payout_items spi ON spi.order_item_id = oi.id
-      WHERE o.status = 'completed'
+      WHERE o.status IN ('pagado', 'completed')
         AND ($1::timestamptz IS NULL OR o.created_at >= $1::timestamptz)
         AND ($2::timestamptz IS NULL OR o.created_at <= $2::timestamptz)
       GROUP BY oi.seller_id, u.username, u.email
@@ -530,7 +535,7 @@ router.post('/finance/payouts/create', authMiddleware, async (req: AuthRequest, 
        JOIN orders o ON o.id = oi.order_id
        LEFT JOIN seller_payout_items spi ON spi.order_item_id = oi.id
        WHERE oi.seller_id = $1
-         AND o.status = 'completed'
+         AND o.status IN ('pagado', 'completed')
          AND spi.order_item_id IS NULL
        FOR UPDATE`,
       [sellerId]

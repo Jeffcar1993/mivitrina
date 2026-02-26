@@ -67,10 +67,13 @@ CREATE TABLE IF NOT EXISTS orders (
   platform_fee_percentage DECIMAL(5, 2) DEFAULT 3.00 NOT NULL,
   platform_fee_amount DECIMAL(10, 2) DEFAULT 0 NOT NULL,
   seller_net_amount DECIMAL(10, 2) DEFAULT 0 NOT NULL,
+  currency_id VARCHAR(10) DEFAULT 'COP',
   status VARCHAR(50) DEFAULT 'pending',
   payment_method VARCHAR(50) DEFAULT 'mercado_pago',
   payment_id VARCHAR(255),
   mercado_pago_preference_id VARCHAR(255),
+  paid_at TIMESTAMP,
+  last_payment_webhook_at TIMESTAMP,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -95,14 +98,61 @@ CREATE TABLE IF NOT EXISTS payments (
   id SERIAL PRIMARY KEY,
   order_id INTEGER REFERENCES orders(id) ON DELETE CASCADE,
   payment_id VARCHAR(255) UNIQUE,
+  external_reference VARCHAR(255),
   status VARCHAR(50) DEFAULT 'pending',
   amount DECIMAL(10, 2) NOT NULL,
+  gross_amount DECIMAL(10, 2),
+  fee_amount DECIMAL(10, 2),
+  net_amount DECIMAL(10, 2),
+  currency_id VARCHAR(10),
   payment_method VARCHAR(50) DEFAULT 'mercado_pago',
+  payment_type_id VARCHAR(50),
+  approved_at TIMESTAMP,
   mercado_pago_payment_id VARCHAR(255),
   mercado_pago_status VARCHAR(50),
   transaction_id VARCHAR(255),
+  webhook_payload JSONB,
+  webhook_received_at TIMESTAMP,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Tabla de facturas
+CREATE TABLE IF NOT EXISTS invoices (
+  id SERIAL PRIMARY KEY,
+  order_id INTEGER UNIQUE REFERENCES orders(id) ON DELETE CASCADE,
+  invoice_number VARCHAR(100) UNIQUE NOT NULL,
+  status VARCHAR(50) DEFAULT 'emitida',
+  subtotal DECIMAL(10, 2) NOT NULL,
+  platform_fee_amount DECIMAL(10, 2) NOT NULL,
+  total_amount DECIMAL(10, 2) NOT NULL,
+  currency_id VARCHAR(10) DEFAULT 'COP' NOT NULL,
+  issued_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Tabla de envíos
+CREATE TABLE IF NOT EXISTS shipments (
+  id SERIAL PRIMARY KEY,
+  order_id INTEGER UNIQUE REFERENCES orders(id) ON DELETE CASCADE,
+  status VARCHAR(50) DEFAULT 'pendiente_preparacion',
+  shipping_address VARCHAR(255),
+  shipping_city VARCHAR(100),
+  tracking_code VARCHAR(120),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Auditoría de eventos de webhook
+CREATE TABLE IF NOT EXISTS payment_webhook_events (
+  id SERIAL PRIMARY KEY,
+  source VARCHAR(30) NOT NULL,
+  event_key VARCHAR(120) NOT NULL,
+  payment_id VARCHAR(120),
+  event_type VARCHAR(80),
+  payload JSONB,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(source, event_key)
 );
 
 -- Tabla de payouts manuales a vendedores

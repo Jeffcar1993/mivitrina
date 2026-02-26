@@ -30,6 +30,13 @@ interface Product {
   user_id: number;
 }
 
+const getNormalizedOrderStatus = (status: string): 'paid' | 'pending' | 'failed' => {
+  const normalized = String(status || '').toLowerCase();
+  if (normalized === 'pagado' || normalized === 'completed') return 'paid';
+  if (normalized === 'pendiente_de_pago' || normalized === 'pending') return 'pending';
+  return 'failed';
+};
+
 export default function Profile() {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -565,29 +572,32 @@ export default function Profile() {
               {orders.map((order) => (
                 <Card key={order.id} className="border-slate-200 hover:border-slate-300 transition-colors">
                   <CardContent className="p-6">
+                    {(() => {
+                      const normalizedStatus = getNormalizedOrderStatus(order.status);
+                      return (
                     <div className="flex items-center justify-between gap-4">
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
                           <h3 className="font-bold text-slate-900">{order.order_number}</h3>
                           <Badge
                             variant={
-                              order.status === 'completed'
+                              normalizedStatus === 'paid'
                                 ? 'default'
-                                : order.status === 'pending'
+                                : normalizedStatus === 'pending'
                                 ? 'secondary'
                                 : 'destructive'
                             }
                             className={
-                              order.status === 'completed'
+                              normalizedStatus === 'paid'
                                 ? 'bg-green-100 text-green-800'
-                                : order.status === 'pending'
+                                : normalizedStatus === 'pending'
                                 ? 'bg-yellow-100 text-yellow-800'
                                 : 'bg-red-100 text-red-800'
                             }
                           >
-                            {order.status === 'completed'
+                            {normalizedStatus === 'paid'
                               ? '✓ Pagado'
-                              : order.status === 'pending'
+                              : normalizedStatus === 'pending'
                               ? '⏳ Pendiente'
                               : '✗ Cancelado'}
                           </Badge>
@@ -615,6 +625,8 @@ export default function Profile() {
                         Ver detalles
                       </Button>
                     </div>
+                      );
+                    })()}
                   </CardContent>
                 </Card>
               ))}

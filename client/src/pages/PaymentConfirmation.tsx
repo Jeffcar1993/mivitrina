@@ -39,34 +39,29 @@ export default function PaymentConfirmation() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Estados de pago posibles
   const paymentStatus = searchParams.get('status');
-  const externalReference = searchParams.get('external_reference');
+  const orderNumber = searchParams.get('orderNumber') || searchParams.get('external_reference');
 
   const [isCleared, setIsCleared] = useState(false); // Nuevo estado para controlar limpieza del carrito
 
   useEffect(() => {
     const verifyPayment = async () => {
-      if (!externalReference || isCleared) return; // Si ya se limpió, no hacer nada
+      if (!orderNumber || isCleared) return;
 
       try {
         if (paymentStatus === 'approved') {
-          // 1. Primero confirmamos en el servidor
-          await api.put(`/payments/${externalReference}/confirm-payment`);
+          await api.put(`/payments/${orderNumber}/confirm-payment`);
           await queryClient.invalidateQueries({ queryKey: ['products'] });
-        
-          // 2. Si la confirmación fue exitosa, limpiamos el carrito
+
           clearCart();
-          setIsCleared(true); // Marcamos como limpio
-          
-          // 3. Disparar evento personalizado para que otras páginas lo escuchen (como Profile)
+          setIsCleared(true);
+
           window.dispatchEvent(new CustomEvent('purchaseCompleted', {
             detail: { timestamp: Date.now() }
           }));
         }
 
-        // 4. Obtenemos la orden para mostrar los datos en la UI
-        const response = await api.get(`/orders/by-number/${externalReference}`);
+        const response = await api.get(`/orders/by-number/${orderNumber}`);
         setOrder(normalizeOrder(response.data));
       } catch (err) {
         console.error('Error al verificar pago:', err);
@@ -77,7 +72,7 @@ export default function PaymentConfirmation() {
     };
 
     verifyPayment();
-  }, [externalReference, paymentStatus, clearCart, isCleared, queryClient]); // Añadido isCleared
+  }, [orderNumber, paymentStatus, clearCart, isCleared, queryClient]);
 
   useEffect(() => {
     if (paymentStatus !== 'approved' || !order) return;
@@ -123,9 +118,14 @@ export default function PaymentConfirmation() {
   }
 
   // Determinar el estado del pago
-  const isApproved = paymentStatus === 'approved' && order.status === 'completed';
-  const isPending = paymentStatus === 'pending' || order.status === 'pending';
-  const isFailed = paymentStatus === 'rejected' || paymentStatus === 'cancelled' || order.status === 'failed';
+  const normalizedOrderStatus = String(order.status || '').toLowerCase();
+  const isOrderPaid = normalizedOrderStatus === 'pagado' || normalizedOrderStatus === 'completed';
+  const isOrderPending = normalizedOrderStatus === 'pendiente_de_pago' || normalizedOrderStatus === 'pending';
+  const isOrderFailed = ['fallido', 'failed', 'cancelado', 'cancelled', 'rejected'].includes(normalizedOrderStatus);
+
+  const isApproved = paymentStatus === 'approved' && isOrderPaid;
+  const isPending = paymentStatus === 'pending' || isOrderPending;
+  const isFailed = paymentStatus === 'rejected' || paymentStatus === 'cancelled' || isOrderFailed;
 
   return (
     <div className="min-h-screen bg-[#FBFBFB] py-8">
