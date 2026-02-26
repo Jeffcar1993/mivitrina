@@ -6,20 +6,9 @@ import { authMiddleware, type AuthRequest } from '../middleware/auth.js';
 
 const router = Router();
 
-const ensureSellerRatingsTable = async (): Promise<void> => {
-  await query(`
-    CREATE TABLE IF NOT EXISTS seller_ratings (
-      id SERIAL PRIMARY KEY,
-      seller_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-      buyer_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-      rating INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      UNIQUE(seller_id, buyer_id)
-    )
-  `);
-
-  await query('CREATE INDEX IF NOT EXISTS idx_seller_ratings_seller_id ON seller_ratings(seller_id)');
+const hasSellerRatingsTable = async (): Promise<boolean> => {
+  const result = await query("SELECT to_regclass('public.seller_ratings') AS table_name");
+  return Boolean(result.rows[0]?.table_name);
 };
 
 // Usamos Promise<void> porque la función no retorna un valor, sino que responde al cliente
@@ -226,7 +215,16 @@ router.get('/', async (_req: Request, res: Response): Promise<void> => {
 // Obtener resumen de calificaciones del vendedor de un producto
 router.get('/:id/seller-rating', async (req: Request, res: Response): Promise<void> => {
   try {
-    await ensureSellerRatingsTable();
+    const ratingsTableAvailable = await hasSellerRatingsTable();
+
+    if (!ratingsTableAvailable) {
+      res.json({
+        sellerId: null,
+        averageRating: 0,
+        totalRatings: 0,
+      });
+      return;
+    }
 
     const { id } = req.params;
 
@@ -276,7 +274,15 @@ router.get('/:id/seller-rating', async (req: Request, res: Response): Promise<vo
 // Obtener la calificación del usuario autenticado para el vendedor de un producto
 router.get('/:id/seller-rating/my', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    await ensureSellerRatingsTable();
+    const ratingsTableAvailable = await hasSellerRatingsTable();
+
+    if (!ratingsTableAvailable) {
+      res.json({
+        sellerId: null,
+        myRating: null,
+      });
+      return;
+    }
 
     const { id } = req.params;
     const buyerId = req.userId;
@@ -328,7 +334,12 @@ router.get('/:id/seller-rating/my', authMiddleware, async (req: AuthRequest, res
 // Crear o actualizar calificación del vendedor de un producto
 router.post('/:id/seller-rating', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    await ensureSellerRatingsTable();
+    const ratingsTableAvailable = await hasSellerRatingsTable();
+
+    if (!ratingsTableAvailable) {
+      res.status(503).json({ error: 'Calificaciones temporalmente no disponibles' });
+      return;
+    }
 
     const { id } = req.params;
     const buyerId = req.userId;
