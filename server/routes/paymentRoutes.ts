@@ -571,7 +571,7 @@ router.put('/:orderNumber/confirm-payment', async (req: Request, res: Response) 
     // 1. Actualizar la orden a completada
     const orderResult = await query(
       `UPDATE orders SET status = 'pagado', paid_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
-       WHERE order_number = $1 AND status != 'pagado'
+       WHERE order_number = $1 AND status NOT IN ('pagado', 'completed')
        RETURNING id`,
       [orderNumber]
     );
