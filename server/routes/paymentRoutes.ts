@@ -13,8 +13,22 @@ const client = new MercadoPagoConfig({
 });
 
 const router = express.Router();
-const DEFAULT_CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
-const DEFAULT_SERVER_URL = process.env.SERVER_URL || 'http://localhost:3000';
+
+const normalizeBaseUrl = (rawValue: string | undefined, fallback: string): string => {
+  const value = String(rawValue || '').trim();
+  const candidate = value.length > 0 ? value : fallback;
+  const withProtocol = /^https?:\/\//i.test(candidate) ? candidate : `http://${candidate}`;
+
+  try {
+    const parsed = new URL(withProtocol);
+    return `${parsed.protocol}//${parsed.host}`;
+  } catch {
+    return fallback;
+  }
+};
+
+const DEFAULT_CLIENT_URL = normalizeBaseUrl(process.env.CLIENT_URL, 'http://localhost:5173');
+const DEFAULT_SERVER_URL = normalizeBaseUrl(process.env.SERVER_URL, 'http://localhost:3000');
 const DEFAULT_CURRENCY = String(process.env.DEFAULT_CURRENCY || 'COP').toUpperCase();
 
 const VALID_PAYMENT_TYPES = new Set([
@@ -224,7 +238,6 @@ router.post('/create-preference', async (req: Request, res: Response) => {
       title: String(item.title || 'Producto'),
       quantity: Number(item.quantity || 1),
       unit_price: Number(item.unit_price || 0),
-      currency_id: String(order.currency_id || DEFAULT_CURRENCY),
     }));
 
     const computedTotal = roundMoney(
@@ -237,30 +250,58 @@ router.post('/create-preference', async (req: Request, res: Response) => {
     }
 
     const preference = new Preference(client);
-    const preferenceData = await preference.create({
-      body: {
-        items,
-        payer: {
-          email: String(order.customer_email || ''),
-          name: String(order.customer_name || ''),
-          phone: {
-            number: String(order.customer_phone || ''),
-          },
-        },
-        back_urls: {
-          success: `${DEFAULT_CLIENT_URL}/payment-confirmation?status=approved&orderNumber=${order.order_number}`,
-          failure: `${DEFAULT_CLIENT_URL}/payment-confirmation?status=rejected&orderNumber=${order.order_number}`,
-          pending: `${DEFAULT_CLIENT_URL}/payment-confirmation?status=pending&orderNumber=${order.order_number}`,
-        },
-        auto_return: 'approved',
-        external_reference: String(order.id),
-        notification_url: `${DEFAULT_SERVER_URL}/api/payments/webhook`,
-        payment_methods: {
-          excluded_payment_methods: [],
-          excluded_payment_types: [],
+    const hasPublicServerUrl =
+      DEFAULT_SERVER_URL.startsWith('https://') &&
+      !DEFAULT_SERVER_URL.includes('localhost') &&
+      !DEFAULT_SERVER_URL.includes('127.0.0.1');
+
+    const preferenceBody: any = {
+      items,
+      payer: {
+        email: String(order.customer_email || ''),
+        name: String(order.customer_name || ''),
+        phone: {
+          number: String(order.customer_phone || ''),
         },
       },
-    });
+      back_urls: {
+        success: `${DEFAULT_CLIENT_URL}/payment-confirmation?status=approved&orderNumber=${order.order_number}`,
+        failure: `${DEFAULT_CLIENT_URL}/payment-confirmation?status=rejected&orderNumber=${order.order_number}`,
+        pending: `${DEFAULT_CLIENT_URL}/payment-confirmation?status=pending&orderNumber=${order.order_number}`,
+      },
+      auto_return: 'approved',
+      external_reference: String(order.id),
+      payment_methods: {
+        excluded_payment_methods: [],
+        excluded_payment_types: [],
+      },
+    };
+
+    if (hasPublicServerUrl) {
+      preferenceBody.notification_url = `${DEFAULT_SERVER_URL}/api/payments/webhook`;
+    }
+
+    let preferenceData: any;
+
+    try {
+      preferenceData = await preference.create({
+        body: preferenceBody,
+      });
+    } catch (error: any) {
+      const message = String(error?.message || '').toLowerCase();
+      const shouldRetryWithoutAutoReturn =
+        message.includes('auto_return invalid') ||
+        message.includes('back_url.success');
+
+      if (!shouldRetryWithoutAutoReturn) {
+        throw error;
+      }
+
+      delete preferenceBody.auto_return;
+      preferenceData = await preference.create({
+        body: preferenceBody,
+      });
+    }
 
     const initPoint = preferenceData.init_point || preferenceData.sandbox_init_point;
     await query(
@@ -274,8 +315,23 @@ router.post('/create-preference', async (req: Request, res: Response) => {
       preferenceId: preferenceData.id,
       initPoint,
     });
-  } catch (error) {
-    console.error('Error al crear preference con verificación servidor:', error);
+  } catch (error: any) {
+    console.error('Error al crear preference con verificación servidor:', {
+      message: error?.message,
+      cause: error?.cause,
+      status: error?.status,
+      response: error?.response,
+      body: error?.body,
+    });
+
+    const providerStatus = Number(error?.status || error?.response?.status || 0);
+    if (providerStatus >= 400 && providerStatus < 500) {
+      res.status(502).json({
+        error: 'Mercado Pago rechazó la preferencia de pago. Revisa configuración de cuenta/URLs.',
+      });
+      return;
+    }
+
     res.status(500).json({ error: 'No se pudo iniciar el pago' });
   }
 });

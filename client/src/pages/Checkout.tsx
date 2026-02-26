@@ -95,8 +95,23 @@ export default function Checkout() {
       } else {
         toast.error('No se pudo iniciar el pago con Mercado Pago. Intenta de nuevo.');
       }
-    } catch (error) {
-      console.error('Error al crear la orden:', error);
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { status?: number; data?: { error?: string } } };
+      const status = Number(axiosError?.response?.status || 0);
+      const backendMessage = String(axiosError?.response?.data?.error || '');
+
+      console.error('Error al procesar checkout:', error);
+
+      if (status === 502) {
+        toast.error(backendMessage || 'Mercado Pago rechazó la configuración de pago. Intenta de nuevo.');
+        return;
+      }
+
+      if (status >= 400 && status < 500 && backendMessage) {
+        toast.error(backendMessage);
+        return;
+      }
+
       toast.error('Hubo un error al procesar tu compra. Intenta de nuevo.');
     } finally {
       setLoading(false);
