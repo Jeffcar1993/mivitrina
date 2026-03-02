@@ -1,5 +1,5 @@
 import express, { type Request, type Response } from 'express';
-import { query } from '../config/db.js';
+import { query, withTransaction } from '../config/db.js';
 import { authMiddleware, type AuthRequest } from '../middleware/auth.js';
 import jwt from 'jsonwebtoken';
 
@@ -11,6 +11,11 @@ const getDefaultCurrency = (): string => String(process.env.DEFAULT_CURRENCY || 
 const JWT_SECRET = process.env.JWT_SECRET || 'tu-secreto-super-seguro-cambiar-en-produccion';
 
 const roundMoney = (value: number): number => Math.round(value * 100) / 100;
+
+const isPaidLikeStatus = (status: unknown): boolean => {
+  const normalized = String(status || '').trim().toLowerCase();
+  return normalized === 'pagado' || normalized === 'completed' || normalized === 'completado';
+};
 
 interface ProductOrderMeta {
   availableQty: number;
@@ -322,13 +327,58 @@ router.patch('/:orderId/status', async (req: Request, res: Response) => {
   }
 
   try {
-    await query(
-      `UPDATE orders SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2`,
-      [status, orderId]
-    );
+    const targetStatus = String(status).trim();
 
-    res.json({ success: true, message: 'Estado actualizado' });
+    const result = await withTransaction(async (client) => {
+      const currentOrderResult = await client.query(
+        `SELECT id, status FROM orders WHERE id = $1 LIMIT 1 FOR UPDATE`,
+        [orderId]
+      );
+
+      if (currentOrderResult.rows.length === 0) {
+        const err = new Error('Orden no encontrada');
+        (err as Error & { statusCode?: number }).statusCode = 404;
+        throw err;
+      }
+
+      const currentStatus = currentOrderResult.rows[0].status;
+      const wasPaidLike = isPaidLikeStatus(currentStatus);
+      const willBePaidLike = isPaidLikeStatus(targetStatus);
+
+      const updateResult = await client.query(
+        `UPDATE orders
+         SET status = $1,
+             payment_id = COALESCE(payment_id, CASE WHEN $2::boolean THEN CONCAT('PAY-MANUAL-', order_number) ELSE payment_id END),
+             paid_at = CASE WHEN $2::boolean THEN COALESCE(paid_at, CURRENT_TIMESTAMP) ELSE paid_at END,
+             updated_at = CURRENT_TIMESTAMP
+         WHERE id = $3
+         RETURNING id, status`,
+        [targetStatus, willBePaidLike, orderId]
+      );
+
+      if (!wasPaidLike && willBePaidLike) {
+        const orderItems = await client.query(
+          'SELECT product_id, quantity FROM order_items WHERE order_id = $1',
+          [orderId]
+        );
+
+        for (const item of orderItems.rows) {
+          await client.query(
+            'UPDATE products SET quantity = GREATEST(0, quantity - $1) WHERE id = $2',
+            [Number(item.quantity || 0), Number(item.product_id)]
+          );
+        }
+      }
+
+      return updateResult.rows[0];
+    });
+
+    res.json({ success: true, message: 'Estado actualizado', order: result });
   } catch (error) {
+    if ((error as Error & { statusCode?: number })?.statusCode === 404) {
+      res.status(404).json({ error: 'Orden no encontrada' });
+      return;
+    }
     console.error('Error al actualizar orden:', error);
     res.status(500).json({ error: 'Error al actualizar la orden' });
   }
@@ -366,6 +416,100 @@ router.get('/by-number/:orderNumber', async (req: Request, res: Response) => {
   }
 });
 
+// Reconciliar stock manualmente para una orden pagada/completada (solo admin)
+router.post('/:orderId/reconcile-stock', authMiddleware, async (req: AuthRequest, res: Response) => {
+  const orderId = Number(req.params.orderId);
+
+  if (!orderId || Number.isNaN(orderId)) {
+    res.status(400).json({ error: 'orderId inválido' });
+    return;
+  }
+
+  try {
+    const isAdmin = await ensureAdmin(req.userId, res);
+    if (!isAdmin) return;
+
+    const result = await withTransaction(async (client) => {
+      await client.query(
+        `CREATE TABLE IF NOT EXISTS order_stock_reconciliations (
+          order_id INTEGER PRIMARY KEY REFERENCES orders(id) ON DELETE CASCADE,
+          reconciled_by_user_id INTEGER REFERENCES users(id),
+          reconciled_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )`
+      );
+
+      const orderResult = await client.query(
+        `SELECT id, order_number, status
+         FROM orders
+         WHERE id = $1
+         LIMIT 1
+         FOR UPDATE`,
+        [orderId]
+      );
+
+      if (orderResult.rows.length === 0) {
+        const err = new Error('Orden no encontrada');
+        (err as Error & { statusCode?: number }).statusCode = 404;
+        throw err;
+      }
+
+      const order = orderResult.rows[0];
+      if (!isPaidLikeStatus(order.status)) {
+        const err = new Error('Solo puedes reconciliar stock de órdenes pagadas/completadas');
+        (err as Error & { statusCode?: number }).statusCode = 409;
+        throw err;
+      }
+
+      const reconcileInsert = await client.query(
+        `INSERT INTO order_stock_reconciliations (order_id, reconciled_by_user_id)
+         VALUES ($1, $2)
+         ON CONFLICT (order_id) DO NOTHING
+         RETURNING reconciled_at`,
+        [orderId, req.userId ?? null]
+      );
+
+      if (reconcileInsert.rows.length === 0) {
+        const err = new Error('Esta orden ya fue reconciliada previamente');
+        (err as Error & { statusCode?: number }).statusCode = 409;
+        throw err;
+      }
+
+      const itemsResult = await client.query(
+        'SELECT product_id, quantity FROM order_items WHERE order_id = $1',
+        [orderId]
+      );
+
+      let affectedProducts = 0;
+      for (const item of itemsResult.rows) {
+        const updateResult = await client.query(
+          'UPDATE products SET quantity = GREATEST(0, quantity - $1) WHERE id = $2',
+          [Number(item.quantity || 0), Number(item.product_id)]
+        );
+        affectedProducts += updateResult.rowCount || 0;
+      }
+
+      return {
+        orderId,
+        orderNumber: String(order.order_number || ''),
+        itemsCount: itemsResult.rows.length,
+        affectedProducts,
+        reconciledAt: reconcileInsert.rows[0].reconciled_at,
+      };
+    });
+
+    res.json({ success: true, ...result });
+  } catch (error) {
+    const statusCode = (error as Error & { statusCode?: number })?.statusCode;
+    if (statusCode === 404 || statusCode === 409) {
+      res.status(statusCode).json({ error: (error as Error).message });
+      return;
+    }
+
+    console.error('Error al reconciliar stock de la orden:', error);
+    res.status(500).json({ error: 'Error al reconciliar stock de la orden' });
+  }
+});
+
 // ==================== FINANZAS / COMISIONES ====================
 
 // Resumen global de monetización
@@ -384,7 +528,7 @@ router.get('/finance/summary', authMiddleware, async (req: AuthRequest, res: Res
         COALESCE(SUM(o.platform_fee_amount), 0)::numeric AS platform_revenue,
         COALESCE(SUM(o.seller_net_amount), 0)::numeric AS seller_net_total
       FROM orders o
-      WHERE o.status IN ('pagado', 'completed')
+      WHERE o.status IN ('pagado', 'completed', 'completado')
         AND ($1::timestamptz IS NULL OR o.created_at >= $1::timestamptz)
         AND ($2::timestamptz IS NULL OR o.created_at <= $2::timestamptz)
       `,
@@ -432,7 +576,7 @@ router.get('/finance/sellers', authMiddleware, async (req: AuthRequest, res: Res
       JOIN orders o ON o.id = oi.order_id
       JOIN users u ON u.id = oi.seller_id
       LEFT JOIN seller_payout_items spi ON spi.order_item_id = oi.id
-      WHERE o.status IN ('pagado', 'completed')
+      WHERE o.status IN ('pagado', 'completed', 'completado')
         AND ($1::timestamptz IS NULL OR o.created_at >= $1::timestamptz)
         AND ($2::timestamptz IS NULL OR o.created_at <= $2::timestamptz)
       GROUP BY oi.seller_id, u.username, u.email
@@ -521,65 +665,69 @@ router.post('/finance/payouts/create', authMiddleware, async (req: AuthRequest, 
 
     const sellerId = Number(req.body?.sellerId);
     const notes = req.body?.notes ? String(req.body.notes) : null;
+    const createdByUserId = req.userId;
 
     if (!sellerId || Number.isNaN(sellerId)) {
       res.status(400).json({ error: 'sellerId es requerido' });
       return;
     }
 
-    await query('BEGIN');
-
-    const pendingItems = await query(
-      `SELECT oi.id, oi.seller_net_amount
-       FROM order_items oi
-       JOIN orders o ON o.id = oi.order_id
-       LEFT JOIN seller_payout_items spi ON spi.order_item_id = oi.id
-       WHERE oi.seller_id = $1
-         AND o.status IN ('pagado', 'completed')
-         AND spi.order_item_id IS NULL
-       FOR UPDATE`,
-      [sellerId]
-    );
-
-    if (pendingItems.rows.length === 0) {
-      await query('ROLLBACK');
-      res.status(409).json({ error: 'No hay saldo pendiente para este vendedor' });
-      return;
-    }
-
-    const totalAmount = roundMoney(
-      pendingItems.rows.reduce((acc, row) => acc + Number(row.seller_net_amount || 0), 0)
-    );
-
-    const payoutResult = await query(
-      `INSERT INTO seller_payouts (seller_id, total_amount, status, notes, created_by_user_id)
-       VALUES ($1, $2, 'pending', $3, $4)
-       RETURNING id, seller_id, total_amount, status, created_at`,
-      [sellerId, totalAmount, notes, req.userId]
-    );
-
-    const payoutId = payoutResult.rows[0].id;
-
-    for (const item of pendingItems.rows) {
-      await query(
-        `INSERT INTO seller_payout_items (payout_id, order_item_id)
-         VALUES ($1, $2)`,
-        [payoutId, item.id]
+    const result = await withTransaction(async (client) => {
+      const pendingItems = await client.query(
+        `SELECT oi.id, oi.seller_net_amount
+         FROM order_items oi
+         JOIN orders o ON o.id = oi.order_id
+         LEFT JOIN seller_payout_items spi ON spi.order_item_id = oi.id
+         WHERE oi.seller_id = $1
+           AND o.status IN ('pagado', 'completed', 'completado')
+           AND spi.order_item_id IS NULL
+         FOR UPDATE OF oi`,
+        [sellerId]
       );
-    }
 
-    await query('COMMIT');
+      if (pendingItems.rows.length === 0) {
+        const err = new Error('No hay saldo pendiente para este vendedor');
+        (err as any).statusCode = 409;
+        throw err;
+      }
+
+      const totalAmount = roundMoney(
+        pendingItems.rows.reduce((acc: number, row: any) => acc + Number(row.seller_net_amount || 0), 0)
+      );
+
+      const payoutResult = await client.query(
+        `INSERT INTO seller_payouts (seller_id, total_amount, status, notes, created_by_user_id)
+         VALUES ($1, $2, 'pending', $3, $4)
+         RETURNING id, seller_id, total_amount, status, created_at`,
+        [sellerId, totalAmount, notes, createdByUserId]
+      );
+
+      const payoutId = payoutResult.rows[0].id;
+
+      for (const item of pendingItems.rows) {
+        await client.query(
+          `INSERT INTO seller_payout_items (payout_id, order_item_id)
+           VALUES ($1, $2)`,
+          [payoutId, item.id]
+        );
+      }
+
+      return { payoutId, totalAmount, itemsCount: pendingItems.rows.length };
+    });
 
     res.json({
       success: true,
-      payoutId,
+      payoutId: result.payoutId,
       sellerId,
-      totalAmount,
-      itemsCount: pendingItems.rows.length,
+      totalAmount: result.totalAmount,
+      itemsCount: result.itemsCount,
       status: 'pending',
     });
-  } catch (error) {
-    await query('ROLLBACK');
+  } catch (error: any) {
+    if (error?.statusCode === 409) {
+      res.status(409).json({ error: error.message });
+      return;
+    }
     console.error('Error al crear payout:', error);
     res.status(500).json({ error: 'Error al crear payout' });
   }

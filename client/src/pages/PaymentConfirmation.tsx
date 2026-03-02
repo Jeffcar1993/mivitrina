@@ -61,6 +61,14 @@ export default function PaymentConfirmation() {
           }));
         }
 
+        if (paymentStatus === 'approved' || paymentStatus === 'pending') {
+          await api.post(`/payments/${orderNumber}/sync-status`);
+          await queryClient.invalidateQueries({ queryKey: ['products'] });
+          await queryClient.invalidateQueries({ queryKey: ['finance-summary'] });
+          await queryClient.invalidateQueries({ queryKey: ['finance-sellers'] });
+          await queryClient.invalidateQueries({ queryKey: ['finance-payouts'] });
+        }
+
         const response = await api.get(`/orders/by-number/${orderNumber}`);
         setOrder(normalizeOrder(response.data));
       } catch (err) {
@@ -119,7 +127,10 @@ export default function PaymentConfirmation() {
 
   // Determinar el estado del pago
   const normalizedOrderStatus = String(order.status || '').toLowerCase();
-  const isOrderPaid = normalizedOrderStatus === 'pagado' || normalizedOrderStatus === 'completed';
+  const isOrderPaid =
+    normalizedOrderStatus === 'pagado' ||
+    normalizedOrderStatus === 'completed' ||
+    normalizedOrderStatus === 'completado';
   const isOrderPending = normalizedOrderStatus === 'pendiente_de_pago' || normalizedOrderStatus === 'pending';
   const isOrderFailed = ['fallido', 'failed', 'cancelado', 'cancelled', 'rejected'].includes(normalizedOrderStatus);
 

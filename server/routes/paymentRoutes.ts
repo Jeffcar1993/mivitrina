@@ -66,7 +66,7 @@ const roundMoney = (value: number): number => Math.round(value * 100) / 100;
 
 const normalizeOrderStatus = (rawStatus: string | null | undefined): string => {
   const status = String(rawStatus || '').toLowerCase();
-  if (status === 'completed') return 'pagado';
+  if (status === 'completed' || status === 'completado') return 'pagado';
   return status;
 };
 
@@ -562,7 +562,7 @@ router.post('/webhook', async (req: Request, res: Response) => {
              last_payment_webhook_at = CURRENT_TIMESTAMP,
              updated_at = CURRENT_TIMESTAMP
          WHERE id = $1
-           AND status != 'pagado'`,
+           AND status NOT IN ('pagado', 'completed', 'completado')`,
         [orderId, normalizedIncomingStatus, String(payment.id)]
       );
 
@@ -591,6 +591,232 @@ router.post('/webhook', async (req: Request, res: Response) => {
       error,
     });
     res.status(500).json({ error: 'Error procesando webhook de Mercado Pago' });
+  }
+});
+
+// Sincronizar estado de una orden con Mercado Pago (útil cuando el webhook no llega en entornos locales)
+router.post('/:orderNumber/sync-status', async (req: Request, res: Response) => {
+  const { orderNumber } = req.params;
+
+  try {
+    const orderResult = await query(
+      `SELECT id, order_number, status, total_amount, currency_id, platform_fee_amount, customer_address, customer_city
+       FROM orders
+       WHERE order_number = $1
+       LIMIT 1`,
+      [orderNumber]
+    );
+
+    if (orderResult.rows.length === 0) {
+      res.status(404).json({ error: 'Orden no encontrada' });
+      return;
+    }
+
+    const order = orderResult.rows[0];
+    const orderId = Number(order.id);
+    const currentStatus = normalizeOrderStatus(order.status);
+
+    if (currentStatus === 'pagado') {
+      res.json({ success: true, synced: false, alreadyPaid: true, message: 'La orden ya está pagada' });
+      return;
+    }
+
+    const accessToken = process.env.MERCADO_PAGO_ACCESS_TOKEN || '';
+    if (!accessToken) {
+      res.status(503).json({ error: 'MERCADO_PAGO_ACCESS_TOKEN no configurado' });
+      return;
+    }
+
+    const searchUrl = new URL('https://api.mercadopago.com/v1/payments/search');
+    searchUrl.searchParams.set('external_reference', String(orderId));
+    searchUrl.searchParams.set('sort', 'date_created');
+    searchUrl.searchParams.set('criteria', 'desc');
+    searchUrl.searchParams.set('limit', '20');
+
+    const response = await fetch(searchUrl.toString(), {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const payload = await response.text();
+      throw new Error(`Error consultando pagos en Mercado Pago: ${response.status} ${payload}`);
+    }
+
+    const payload = (await response.json()) as { results?: MercadoPagoPayment[] };
+    const paymentCandidates = Array.isArray(payload.results) ? payload.results : [];
+
+    const approvedPayment = paymentCandidates.find((candidate) => {
+      const validation = validateApprovedPayment({
+        orderId,
+        expectedAmount: Number(order.total_amount || 0),
+        expectedCurrency: String(order.currency_id || DEFAULT_CURRENCY),
+        payment: candidate,
+      });
+      return validation.valid;
+    });
+
+    if (!approvedPayment) {
+      res.json({
+        success: true,
+        synced: false,
+        alreadyPaid: false,
+        message: 'Aún no hay pago aprobado en Mercado Pago para esta orden',
+      });
+      return;
+    }
+
+    const amounts = buildPaymentAmounts(approvedPayment);
+
+    await withTransaction(async (clientTx) => {
+      const lockedOrderResult = await clientTx.query(
+        `SELECT id, status FROM orders WHERE id = $1 FOR UPDATE`,
+        [orderId]
+      );
+
+      if (lockedOrderResult.rows.length === 0) {
+        throw new Error('Orden no encontrada durante sincronización');
+      }
+
+      const lockedStatus = normalizeOrderStatus(lockedOrderResult.rows[0].status);
+      if (lockedStatus === 'pagado') {
+        return;
+      }
+
+      await clientTx.query(
+        `INSERT INTO payments (
+          order_id,
+          payment_id,
+          external_reference,
+          status,
+          amount,
+          gross_amount,
+          fee_amount,
+          net_amount,
+          currency_id,
+          payment_method,
+          payment_type_id,
+          approved_at,
+          mercado_pago_payment_id,
+          mercado_pago_status,
+          transaction_id,
+          webhook_payload,
+          webhook_received_at,
+          updated_at
+        ) VALUES (
+          $1, $2, $3, $4, $5, $6, $7, $8,
+          $9, $10, $11, $12, $13, $14, $15, $16,
+          CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+        )
+        ON CONFLICT (payment_id)
+        DO UPDATE SET
+          order_id = EXCLUDED.order_id,
+          external_reference = EXCLUDED.external_reference,
+          status = EXCLUDED.status,
+          amount = EXCLUDED.amount,
+          gross_amount = EXCLUDED.gross_amount,
+          fee_amount = EXCLUDED.fee_amount,
+          net_amount = EXCLUDED.net_amount,
+          currency_id = EXCLUDED.currency_id,
+          payment_method = EXCLUDED.payment_method,
+          payment_type_id = EXCLUDED.payment_type_id,
+          approved_at = EXCLUDED.approved_at,
+          mercado_pago_payment_id = EXCLUDED.mercado_pago_payment_id,
+          mercado_pago_status = EXCLUDED.mercado_pago_status,
+          transaction_id = EXCLUDED.transaction_id,
+          webhook_payload = EXCLUDED.webhook_payload,
+          webhook_received_at = EXCLUDED.webhook_received_at,
+          updated_at = CURRENT_TIMESTAMP`,
+        [
+          orderId,
+          String(approvedPayment.id),
+          String(orderId),
+          'pagado',
+          amounts.grossAmount,
+          amounts.grossAmount,
+          amounts.feeAmount,
+          amounts.netAmount,
+          String(approvedPayment.currency_id || order.currency_id || DEFAULT_CURRENCY).toUpperCase(),
+          'mercado_pago',
+          String(approvedPayment.payment_type_id || ''),
+          approvedPayment.date_approved ? new Date(approvedPayment.date_approved) : null,
+          String(approvedPayment.id),
+          String(approvedPayment.status || ''),
+          String(approvedPayment.id),
+          approvedPayment,
+        ]
+      );
+
+      await clientTx.query(
+        `UPDATE orders
+         SET status = 'pagado',
+             payment_id = $2,
+             paid_at = COALESCE($3, CURRENT_TIMESTAMP),
+             last_payment_webhook_at = CURRENT_TIMESTAMP,
+             updated_at = CURRENT_TIMESTAMP
+         WHERE id = $1`,
+        [orderId, String(approvedPayment.id), approvedPayment.date_approved ? new Date(approvedPayment.date_approved) : null]
+      );
+
+      const items = await clientTx.query(
+        'SELECT product_id, quantity FROM order_items WHERE order_id = $1',
+        [orderId]
+      );
+
+      for (const item of items.rows) {
+        await clientTx.query(
+          'UPDATE products SET quantity = GREATEST(0, quantity - $1) WHERE id = $2',
+          [Number(item.quantity || 0), Number(item.product_id)]
+        );
+      }
+
+      await clientTx.query(
+        `INSERT INTO invoices (
+          order_id,
+          invoice_number,
+          status,
+          subtotal,
+          platform_fee_amount,
+          total_amount,
+          currency_id,
+          issued_at
+        )
+        VALUES ($1, $2, 'emitida', $3, $4, $5, $6, CURRENT_TIMESTAMP)
+        ON CONFLICT (order_id) DO NOTHING`,
+        [
+          orderId,
+          buildInvoiceNumber(String(order.order_number || orderId)),
+          amounts.grossAmount,
+          Number(order.platform_fee_amount || 0),
+          amounts.grossAmount,
+          String(approvedPayment.currency_id || order.currency_id || DEFAULT_CURRENCY).toUpperCase(),
+        ]
+      );
+
+      await clientTx.query(
+        `INSERT INTO shipments (order_id, status, shipping_address, shipping_city)
+         VALUES ($1, 'pendiente_preparacion', $2, $3)
+         ON CONFLICT (order_id) DO NOTHING`,
+        [orderId, order.customer_address || null, order.customer_city || null]
+      );
+    });
+
+    const payoutSummary = await processAutomaticPayoutsForOrder(orderId);
+
+    res.json({
+      success: true,
+      synced: true,
+      orderId,
+      orderNumber,
+      status: 'pagado',
+      payoutSummary,
+    });
+  } catch (error) {
+    console.error('Error al sincronizar estado con Mercado Pago:', error);
+    res.status(500).json({ error: 'Error al sincronizar estado de pago' });
   }
 });
 
@@ -627,7 +853,7 @@ router.put('/:orderNumber/confirm-payment', async (req: Request, res: Response) 
     // 1. Actualizar la orden a completada
     const orderResult = await query(
       `UPDATE orders SET status = 'pagado', paid_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
-       WHERE order_number = $1 AND status NOT IN ('pagado', 'completed')
+       WHERE order_number = $1 AND status NOT IN ('pagado', 'completed', 'completado')
        RETURNING id`,
       [orderNumber]
     );
