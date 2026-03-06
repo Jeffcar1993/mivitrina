@@ -2,6 +2,8 @@ import express from 'express';
 import type { Request, Response } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import helmet from 'helmet';
+import { rateLimit } from 'express-rate-limit';
 import { query } from './config/db.js'; // TypeScript ESM requires explicit extensions
 import cloudinary from './config/cloudinary.js';
 import { upload } from './middleware/multer.js';
@@ -26,6 +28,24 @@ const PASSWORD_RESET_TOKEN_TTL_MS = 1000 * 60 * 30;
 if (!JWT_SECRET) {
   throw new Error('JWT_SECRET no está configurado. Define una clave segura en variables de entorno.');
 }
+
+const isProduction = process.env.NODE_ENV === 'production';
+
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Demasiadas solicitudes. Intenta de nuevo en unos minutos.' },
+});
+
+const authLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: 25,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Demasiados intentos de autenticación. Intenta más tarde.' },
+});
 
 const allowedOrigins = Array.from(
   new Set(
@@ -103,10 +123,24 @@ const buildPasswordResetToken = (): { rawToken: string; tokenHash: string; expir
 // Configurar Passport
 configurePassport();
 
+if (isProduction) {
+  app.set('trust proxy', 1);
+}
+
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+  })
+);
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true })); // Añade esta línea para formularios
 app.use(passport.initialize());
+
+if (isProduction) {
+  app.use('/api', apiLimiter);
+  app.use('/api/auth', authLimiter);
+}
 
 app.use('/api/products', productRoutes); // Aquí conectamos todo
 app.use('/api/orders', orderRoutes);
