@@ -1,7 +1,11 @@
 import type { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'tu-secreto-super-seguro-cambiar-en-produccion';
+const JWT_SECRET = String(process.env.JWT_SECRET || '').trim();
+
+if (!JWT_SECRET) {
+  throw new Error('JWT_SECRET no está configurado. Define una clave segura en variables de entorno.');
+}
 
 export interface AuthRequest extends Request {
   userId?: number;

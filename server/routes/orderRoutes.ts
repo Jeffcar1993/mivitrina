@@ -8,7 +8,11 @@ const router = express.Router();
 const getPlatformFeePercentage = (): number => Number(process.env.PLATFORM_FEE_PERCENTAGE || 3);
 const getAdminEmail = (): string => String(process.env.ADMIN_EMAIL || '').trim().toLowerCase();
 const getDefaultCurrency = (): string => String(process.env.DEFAULT_CURRENCY || 'COP').trim().toUpperCase();
-const JWT_SECRET = process.env.JWT_SECRET || 'tu-secreto-super-seguro-cambiar-en-produccion';
+const JWT_SECRET = String(process.env.JWT_SECRET || '').trim();
+
+if (!JWT_SECRET) {
+  throw new Error('JWT_SECRET no está configurado. Define una clave segura en variables de entorno.');
+}
 
 const roundMoney = (value: number): number => Math.round(value * 100) / 100;
 

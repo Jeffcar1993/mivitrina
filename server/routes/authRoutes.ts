@@ -4,9 +4,13 @@ import jwt from 'jsonwebtoken';
 import { randomBytes } from 'crypto';
 
 const router = express.Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'tu-secreto-super-seguro-cambiar-en-produccion';
+const JWT_SECRET = String(process.env.JWT_SECRET || '').trim();
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
 const OAUTH_CODE_TTL_MS = 1000 * 60 * 2;
+
+if (!JWT_SECRET) {
+  throw new Error('JWT_SECRET no está configurado. Define una clave segura en variables de entorno.');
+}
 
 type OAuthSessionPayload = {
   token: string;
