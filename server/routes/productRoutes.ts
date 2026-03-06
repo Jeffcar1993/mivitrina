@@ -448,32 +448,42 @@ router.get('/:id', async (req: Request, res: Response): Promise<void> => {
 });
 
 // RUTA PARA ELIMINAR UN PRODUCTO
-router.delete('/:id', async (req: Request, res: Response): Promise<void> => {
+router.delete('/:id', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
+    const userId = req.userId;
 
-    // 1. Primero obtenemos la URL de la imagen para saber qué borrar en Cloudinary
-    const productQuery = await query('SELECT image_url FROM products WHERE id = $1', [id]);
+    if (!userId) {
+      res.status(401).json({ error: 'No autenticado' });
+      return;
+    }
+
+    const productQuery = await query('SELECT image_url, user_id FROM products WHERE id = $1', [id]);
     
     if (productQuery.rows.length === 0) {
       res.status(404).json({ error: "Producto no encontrado" });
       return;
     }
 
+    const ownerId = Number(productQuery.rows[0].user_id || 0);
+    if (ownerId !== userId) {
+      res.status(403).json({ error: 'No tienes permiso para eliminar este producto' });
+      return;
+    }
+
     const imageUrl = productQuery.rows[0].image_url;
 
-    // 2. Extraer el public_id de la URL de Cloudinary
-    // Ejemplo: .../mi_vitrina_products/imagen.jpg -> mi_vitrina_products/imagen
-    const urlParts = imageUrl.split('/');
-    const fileNameWithExtension = urlParts[urlParts.length - 1];
-    const folderName = urlParts[urlParts.length - 2];
-    const publicId = `${folderName}/${fileNameWithExtension.split('.')[0]}`;
+    if (typeof imageUrl === 'string' && imageUrl.length > 0) {
+      const urlParts = imageUrl.split('/');
+      const fileNameWithExtension = urlParts[urlParts.length - 1];
+      const folderName = urlParts[urlParts.length - 2];
+      if (fileNameWithExtension && folderName) {
+        const publicId = `${folderName}/${fileNameWithExtension.split('.')[0]}`;
+        await cloudinary.uploader.destroy(publicId);
+      }
+    }
 
-    // 3. Borrar imagen en Cloudinary
-    await cloudinary.uploader.destroy(publicId);
-
-    // 4. Borrar registro en la base de datos (Neon)
-    await query('DELETE FROM products WHERE id = $1', [id]);
+    await query('DELETE FROM products WHERE id = $1 AND user_id = $2', [id, userId]);
 
     res.json({ message: "Producto e imagen eliminados correctamente" });
 
@@ -484,16 +494,27 @@ router.delete('/:id', async (req: Request, res: Response): Promise<void> => {
 });
 
 // RUTA PARA ACTUALIZAR UN PRODUCTO
-router.put('/:id', upload.single('image'), async (req: Request, res: Response): Promise<void> => {
+router.put('/:id', authMiddleware, upload.single('image'), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     const { title, description, price, category_id, quantity } = req.body;
+    const userId = req.userId;
 
-    // 1. Buscamos el producto actual para saber si tiene una imagen previa
-    const currentProduct = await query('SELECT image_url FROM products WHERE id = $1', [id]);
+    if (!userId) {
+      res.status(401).json({ error: 'No autenticado' });
+      return;
+    }
+
+    const currentProduct = await query('SELECT image_url, user_id FROM products WHERE id = $1', [id]);
     
     if (currentProduct.rows.length === 0) {
       res.status(404).json({ error: "Producto no encontrado" });
+      return;
+    }
+
+    const ownerId = Number(currentProduct.rows[0].user_id || 0);
+    if (ownerId !== userId) {
+      res.status(403).json({ error: 'No tienes permiso para actualizar este producto' });
       return;
     }
 
@@ -503,9 +524,14 @@ router.put('/:id', upload.single('image'), async (req: Request, res: Response): 
     if (req.file) {
       // A. Borramos la imagen anterior de Cloudinary (opcional pero recomendado)
       const oldUrl = currentProduct.rows[0].image_url;
-      const urlParts = oldUrl.split('/');
-      const publicId = `mi_vitrina_products/${urlParts[urlParts.length - 1].split('.')[0]}`;
-      await cloudinary.uploader.destroy(publicId);
+      if (typeof oldUrl === 'string' && oldUrl.length > 0) {
+        const urlParts = oldUrl.split('/');
+        const oldFileName = urlParts[urlParts.length - 1];
+        if (oldFileName) {
+          const publicId = `mi_vitrina_products/${oldFileName.split('.')[0]}`;
+          await cloudinary.uploader.destroy(publicId);
+        }
+      }
 
       // B. Subimos la nueva imagen
       const b64 = Buffer.from(req.file.buffer).toString("base64");
@@ -520,13 +546,18 @@ router.put('/:id', upload.single('image'), async (req: Request, res: Response): 
     const sql = `
       UPDATE products 
       SET title = $1, description = $2, price = $3, quantity = $4, image_url = $5, category_id = $6
-      WHERE id = $7
+      WHERE id = $7 AND user_id = $8
       RETURNING *
     `;
     
     const normalizedQuantity = Math.max(1, Number(quantity || 1));
-    const values = [title, description, price, normalizedQuantity, finalImageUrl, category_id, id];
+    const values = [title, description, price, normalizedQuantity, finalImageUrl, category_id, id, userId];
     const result = await query(sql, values);
+
+    if (result.rows.length === 0) {
+      res.status(404).json({ error: 'Producto no encontrado' });
+      return;
+    }
 
     res.json({
       message: "Producto actualizado con éxito",

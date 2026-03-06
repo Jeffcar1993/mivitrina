@@ -13,9 +13,6 @@ import orderRoutes from './routes/orderRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
 import cartRoutes from './routes/cartRoutes.js';
 import authRoutes from './routes/authRoutes.js';
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
-import { createHash, randomBytes } from 'crypto';
 import { authMiddleware, type AuthRequest } from './middleware/auth.js';
 import passport from './config/passport.js';
 import { configurePassport } from './config/passport.js';
@@ -23,13 +20,6 @@ import { configurePassport } from './config/passport.js';
 dotenv.config();
 
 const app = express();
-const JWT_SECRET = String(process.env.JWT_SECRET || '').trim();
-const AUTH_COOKIE_NAME = 'auth_token';
-const PASSWORD_RESET_TOKEN_TTL_MS = 1000 * 60 * 30;
-
-if (!JWT_SECRET) {
-  throw new Error('JWT_SECRET no está configurado. Define una clave segura en variables de entorno.');
-}
 
 const isProduction = process.env.NODE_ENV === 'production';
 
@@ -48,14 +38,6 @@ const authLimiter = rateLimit({
   legacyHeaders: false,
   message: { error: 'Demasiados intentos de autenticación. Intenta más tarde.' },
 });
-
-const authCookieOptions = {
-  httpOnly: true,
-  secure: isProduction,
-  sameSite: isProduction ? 'none' : 'lax',
-  maxAge: 24 * 60 * 60 * 1000,
-  path: '/',
-} as const;
 
 const allowedOrigins = Array.from(
   new Set(
@@ -86,49 +68,6 @@ const corsOptions: cors.CorsOptions = {
 
     callback(new Error('Origen no permitido por CORS'));
   },
-};
-
-// Función para validar contraseña segura
-const validatePassword = (password: string): { isValid: boolean; errors: string[] } => {
-  const errors: string[] = [];
-
-  if (password.length < 8) {
-    errors.push("Mínimo 8 caracteres");
-  }
-
-  if (!/[A-Z]/.test(password)) {
-    errors.push("Al menos una mayúscula");
-  }
-
-  if (!/[a-z]/.test(password)) {
-    errors.push("Al menos una minúscula");
-  }
-
-  if (!/[0-9]/.test(password)) {
-    errors.push("Al menos un número");
-  }
-
-  const specialChars = '!@#$%^&*()_+=-[]{};\':"`\\|,.<>/?';
-  if (![...specialChars].some(char => password.includes(char))) {
-    errors.push("Al menos un carácter especial");
-  }
-
-  return {
-    isValid: errors.length === 0,
-    errors
-  };
-};
-
-const ensurePasswordResetColumns = async (): Promise<void> => {
-  await query('ALTER TABLE users ADD COLUMN IF NOT EXISTS password_reset_token_hash VARCHAR(255)');
-  await query('ALTER TABLE users ADD COLUMN IF NOT EXISTS password_reset_expires_at TIMESTAMP');
-};
-
-const buildPasswordResetToken = (): { rawToken: string; tokenHash: string; expiresAt: Date } => {
-  const rawToken = randomBytes(32).toString('hex');
-  const tokenHash = createHash('sha256').update(rawToken).digest('hex');
-  const expiresAt = new Date(Date.now() + PASSWORD_RESET_TOKEN_TTL_MS);
-  return { rawToken, tokenHash, expiresAt };
 };
 
 // Configurar Passport
@@ -191,239 +130,6 @@ const getCategoriesHandler = async (_req: Request, res: Response) => {
 // Obtener todas las categorías
 app.get('/categories', getCategoriesHandler);
 app.get('/api/categories', getCategoriesHandler);
-
-app.post('/api/auth/register', async (req, res) => {
-  const { username, email, password } = req.body;
-
-  try {
-    const normalizedUsername = String(username || '').trim();
-    const normalizedEmail = String(email || '').trim().toLowerCase();
-
-    if (!normalizedUsername || !normalizedEmail || !password) {
-      return res.status(400).json({ error: "Completa todos los campos" });
-    }
-
-    // Validar que la contraseña sea segura
-    const passwordValidation = validatePassword(password);
-    if (!passwordValidation.isValid) {
-      return res.status(400).json({ 
-        error: "La contraseña no cumple con los requisitos de seguridad",
-        requirements: passwordValidation.errors
-      });
-    }
-
-    const existing = await query(
-      'SELECT email, username FROM users WHERE LOWER(email) = LOWER($1) OR LOWER(username) = LOWER($2)',
-      [normalizedEmail, normalizedUsername]
-    );
-    if (existing.rows.length > 0) {
-      const duplicateEmail = existing.rows.some(
-        (row) => String(row.email || '').toLowerCase() === normalizedEmail
-      );
-
-      if (duplicateEmail) {
-        return res.status(409).json({ error: 'El email ya ha sido registrado' });
-      }
-
-      return res.status(409).json({ error: 'El nombre de usuario ya existe' });
-    }
-
-    // 1. Encriptar contraseña
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
-
-    // 2. Guardar en la base de datos
-    const result = await query(
-      'INSERT INTO users (username, email, password) VALUES ($1, $2, $3) RETURNING id, username, email',
-      [normalizedUsername, normalizedEmail, hashedPassword]
-    );
-
-    const user = result.rows[0];
-
-    // 3. Crear el token de sesión
-    const token = jwt.sign({ id: user.id }, JWT_SECRET, { expiresIn: '24h' });
-    res.cookie(AUTH_COOKIE_NAME, token, authCookieOptions);
-
-    res.json({ user });
-  } catch (err) {
-    console.error(err);
-    const error = err as { code?: string };
-    if (error?.code === '23505') {
-      return res.status(409).json({ error: "El email ya ha sido registrado" });
-    }
-    if (error?.code === '42P01') {
-      return res.status(500).json({ error: "La tabla de usuarios no existe. Revisa la base de datos." });
-    }
-    res.status(500).json({ error: "Error en el servidor" });
-  }
-});
-
-app.post('/api/auth/login', async (req, res) => {
-  const { email, password } = req.body;
-
-  try {
-    const normalizedEmail = String(email || '').trim().toLowerCase();
-
-    if (!normalizedEmail || !password) {
-      return res.status(400).json({ error: "Completa todos los campos" });
-    }
-
-    // 1. Buscar usuario
-    const result = await query('SELECT * FROM users WHERE LOWER(email) = LOWER($1)', [normalizedEmail]);
-    if (result.rows.length === 0) {
-      return res.status(401).json({ error: "Email o contraseña incorrectos" });
-    }
-
-    const user = result.rows[0];
-    const passwordHash = typeof user.password === 'string' ? user.password.trim() : '';
-
-    if (!passwordHash) {
-      return res.status(401).json({
-        error: 'Esta cuenta no tiene contraseña local. Usa Google o solicita recuperación de contraseña.',
-      });
-    }
-
-    // 2. Verificar contraseña
-    const validPassword = await bcrypt.compare(password, passwordHash);
-    if (!validPassword) {
-      return res.status(401).json({ error: "Email o contraseña incorrectos" });
-    }
-
-    // 3. Crear token
-    const token = jwt.sign({ id: user.id }, JWT_SECRET, { expiresIn: '24h' });
-
-    // No enviamos la contraseña de vuelta al cliente
-    const { password: _, ...userFields } = user;
-    res.cookie(AUTH_COOKIE_NAME, token, authCookieOptions);
-    res.json({ user: userFields });
-  } catch (err) {
-    console.error('Error en login:', err);
-    res.status(500).json({ error: "Error en el servidor" });
-  }
-});
-
-app.post('/api/auth/logout', (_req: Request, res: Response) => {
-  res.clearCookie(AUTH_COOKIE_NAME, {
-    httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? 'none' : 'lax',
-    path: '/',
-  });
-  res.json({ success: true });
-});
-
-app.post('/api/auth/forgot-password', async (req, res) => {
-  const normalizedEmail = String(req.body?.email || '').trim().toLowerCase();
-
-  if (!normalizedEmail) {
-    return res.status(400).json({ error: 'Debes ingresar tu correo electrónico' });
-  }
-
-  try {
-    await ensurePasswordResetColumns();
-
-    const userResult = await query(
-      'SELECT id FROM users WHERE LOWER(email) = LOWER($1) LIMIT 1',
-      [normalizedEmail]
-    );
-
-    let resetUrl: string | undefined;
-    if (userResult.rows.length > 0) {
-      const userId = Number(userResult.rows[0].id);
-      const { rawToken, tokenHash, expiresAt } = buildPasswordResetToken();
-
-      await query(
-        `UPDATE users
-         SET password_reset_token_hash = $1,
-             password_reset_expires_at = $2
-         WHERE id = $3`,
-        [tokenHash, expiresAt, userId]
-      );
-
-      const clientBaseUrl = process.env.CLIENT_URL || 'http://localhost:5173';
-      resetUrl = `${clientBaseUrl}/reset-password?token=${rawToken}`;
-    }
-
-    return res.json({
-      success: true,
-      message: 'Si el correo está registrado, enviamos instrucciones para recuperar tu contraseña.',
-      resetUrl: process.env.NODE_ENV !== 'production' ? resetUrl : undefined,
-    });
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({ error: 'No se pudo iniciar la recuperación de contraseña' });
-  }
-});
-
-app.post('/api/auth/reset-password', async (req, res) => {
-  const token = String(req.body?.token || '').trim();
-  const newPassword = String(req.body?.password || '');
-
-  if (!token || !newPassword) {
-    return res.status(400).json({ error: 'Token y nueva contraseña son obligatorios' });
-  }
-
-  const passwordValidation = validatePassword(newPassword);
-  if (!passwordValidation.isValid) {
-    return res.status(400).json({
-      error: 'La contraseña no cumple con los requisitos de seguridad',
-      requirements: passwordValidation.errors,
-    });
-  }
-
-  try {
-    await ensurePasswordResetColumns();
-
-    const tokenHash = createHash('sha256').update(token).digest('hex');
-    const userResult = await query(
-      `SELECT id, password_reset_expires_at
-       FROM users
-       WHERE password_reset_token_hash = $1
-       LIMIT 1`,
-      [tokenHash]
-    );
-
-    if (userResult.rows.length === 0) {
-      return res.status(400).json({ error: 'El enlace de recuperación es inválido' });
-    }
-
-    const expiresAt = userResult.rows[0].password_reset_expires_at as Date | string | null;
-    const expiresAtDate = expiresAt ? new Date(expiresAt) : null;
-    const isExpired = !expiresAtDate || Number.isNaN(expiresAtDate.getTime()) || expiresAtDate.getTime() <= Date.now();
-
-    if (isExpired) {
-      await query(
-        `UPDATE users
-         SET password_reset_token_hash = NULL,
-             password_reset_expires_at = NULL
-         WHERE id = $1`,
-        [userResult.rows[0].id]
-      );
-
-      return res.status(400).json({
-        error: 'El enlace de recuperación expiró. Solicita uno nuevo.',
-      });
-    }
-
-    const userId = Number(userResult.rows[0].id);
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(newPassword, salt);
-
-    await query(
-      `UPDATE users
-       SET password = $1,
-           password_reset_token_hash = NULL,
-           password_reset_expires_at = NULL
-       WHERE id = $2`,
-      [hashedPassword, userId]
-    );
-
-    return res.json({ success: true, message: 'Contraseña actualizada correctamente' });
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({ error: 'No se pudo restablecer la contraseña' });
-  }
-});
 
 // Actualizar perfil de usuario
 app.put('/api/user/profile', authMiddleware, async (req: AuthRequest, res: Response) => {
@@ -528,7 +234,7 @@ app.get('/api/products', async (req: Request, res: Response) => {
 });
 
 // RUTA DE PRUEBA PARA SUBIR IMÁGENES
-app.post('/api/upload', upload.single('image'), async (req: any, res: any) => {
+app.post('/api/upload', authMiddleware, upload.single('image'), async (req: any, res: any) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: "No se envió ninguna imagen" });
@@ -554,17 +260,26 @@ app.post('/api/upload', upload.single('image'), async (req: any, res: any) => {
 
 // server/index.ts (o tus rutas)
 
-app.delete('/api/products/:id', async (req, res) => {
+app.delete('/api/products/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
   try {
-    // 1. Opcional: Podrías buscar el producto primero para borrar la imagen de Cloudinary
-    // Por ahora, borremos el registro de la DB:
-    await query('DELETE FROM products WHERE id = $1', [id]);
+    const productOwnerResult = await query('SELECT user_id FROM products WHERE id = $1 LIMIT 1', [id]);
+
+    if (productOwnerResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Producto no encontrado' });
+    }
+
+    const ownerId = Number(productOwnerResult.rows[0].user_id || 0);
+    if (!req.userId || ownerId !== req.userId) {
+      return res.status(403).json({ error: 'No tienes permiso para eliminar este producto' });
+    }
+
+    await query('DELETE FROM products WHERE id = $1 AND user_id = $2', [id, req.userId]);
     
-    res.json({ message: "Producto eliminado correctamente" });
+    res.json({ message: 'Producto eliminado correctamente' });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: "Error al eliminar el producto" });
+    res.status(500).json({ error: 'Error al eliminar el producto' });
   }
 });
 
