@@ -18,8 +18,9 @@
     <script src="https://sdk.mercadopago.com/js/v2"></script>
     <script>
       // Inicializar Mercado Pago cuando el script carga (SDK v2)
-      if (window.MercadoPago) {
-        window.mp = new window.MercadoPago('APP_USR-bc1af0c2-b38c-424a-83a8-18a0adbe39b3', {
+      const mercadoPagoPublicKey = '%VITE_MERCADO_PAGO_PUBLIC_KEY%';
+      if (window.MercadoPago && mercadoPagoPublicKey && !mercadoPagoPublicKey.includes('VITE_')) {
+        window.mp = new window.MercadoPago(mercadoPagoPublicKey, {
           locale: 'es-CO'
         });
       }
