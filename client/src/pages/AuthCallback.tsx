@@ -1,14 +1,14 @@
 import { useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
+import api from '../lib/axios';
 
 export default function AuthCallback() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
   useEffect(() => {
-    const token = searchParams.get('token');
-    const userString = searchParams.get('user');
+    const oauthCode = searchParams.get('code');
     const error = searchParams.get('error');
 
     if (error) {
@@ -27,29 +27,43 @@ export default function AuthCallback() {
       return;
     }
 
-    if (token && userString) {
+    if (!oauthCode) {
+      toast.error('Datos de autenticación incompletos');
+      navigate('/login');
+      return;
+    }
+
+    const exchangeOAuthCode = async () => {
       try {
-        // Guardar token y usuario en localStorage
+        const response = await api.post<{ token: string; user: unknown }>('/auth/oauth/exchange', {
+          code: oauthCode,
+        });
+
+        const token = response.data?.token;
+        const user = response.data?.user;
+
+        if (!token || !user) {
+          throw new Error('Respuesta OAuth incompleta');
+        }
+
         localStorage.setItem('token', token);
-        localStorage.setItem('user', userString);
-        
-        const user = JSON.parse(userString);
-        toast.success(`¡Bienvenido ${user.username}!`, {
+        localStorage.setItem('user', JSON.stringify(user));
+
+        const parsedUser = user as { username?: string };
+        toast.success(`¡Bienvenido ${parsedUser.username || 'de nuevo'}!`, {
           description: 'Has iniciado sesión correctamente.'
         });
 
-        // Redirigir a home y recargar
         navigate('/');
         window.location.reload();
-      } catch (error) {
-        console.error('Error procesando callback:', error);
+      } catch (exchangeError) {
+        console.error('Error procesando callback OAuth:', exchangeError);
         toast.error('Error al procesar autenticación');
         navigate('/login');
       }
-    } else {
-      toast.error('Datos de autenticación incompletos');
-      navigate('/login');
-    }
+    };
+
+    void exchangeOAuthCode();
   }, [searchParams, navigate]);
 
   return (
