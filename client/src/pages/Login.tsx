@@ -25,7 +25,6 @@ export default function Login() {
     setLoading(true);
     try {
       const res = await api.post('/auth/login', formData);
-      localStorage.setItem('token', res.data.token);
       localStorage.setItem('user', JSON.stringify(res.data.user));
       toast.success("¡Hola de nuevo!", { description: "Has iniciado sesión correctamente." });
       navigate('/');

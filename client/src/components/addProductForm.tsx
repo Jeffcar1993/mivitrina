@@ -66,16 +66,9 @@ export function AddProductForm({
   }, []);
 
   const canOpenPublishFlow = (): boolean => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      toast.error('Debes iniciar sesión para publicar un producto');
-      navigate('/login');
-      return false;
-    }
-
     const rawUser = localStorage.getItem('user');
     if (!rawUser) {
-      toast.error('No se encontró tu sesión. Vuelve a iniciar sesión.');
+      toast.error('Debes iniciar sesión para publicar un producto');
       navigate('/login');
       return false;
     }
@@ -113,8 +106,8 @@ export function AddProductForm({
     e.preventDefault();
     setLoading(true);
 
-    const token = localStorage.getItem('token');
-    if (!token) {
+    const rawUser = localStorage.getItem('user');
+    if (!rawUser) {
       setLoading(false);
       toast.error('Debes iniciar sesión para publicar un producto');
       navigate('/login');

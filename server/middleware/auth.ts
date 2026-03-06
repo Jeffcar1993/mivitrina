@@ -11,9 +11,23 @@ export interface AuthRequest extends Request {
   userId?: number;
 }
 
+const extractToken = (req: Request): string | null => {
+  const authHeader = req.headers.authorization;
+  if (typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
+    return authHeader.replace('Bearer ', '').trim();
+  }
+
+  const cookieToken = req.cookies?.auth_token;
+  if (typeof cookieToken === 'string' && cookieToken.trim().length > 0) {
+    return cookieToken.trim();
+  }
+
+  return null;
+};
+
 export const authMiddleware = (req: AuthRequest, res: Response, next: NextFunction): void => {
   try {
-    const token = req.headers.authorization?.replace('Bearer ', '');
+    const token = extractToken(req);
     
     if (!token) {
       res.status(401).json({ error: 'Token no proporcionado' });

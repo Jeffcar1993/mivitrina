@@ -4,6 +4,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import helmet from 'helmet';
 import { rateLimit } from 'express-rate-limit';
+import cookieParser from 'cookie-parser';
 import { query } from './config/db.js'; // TypeScript ESM requires explicit extensions
 import cloudinary from './config/cloudinary.js';
 import { upload } from './middleware/multer.js';
@@ -23,6 +24,7 @@ dotenv.config();
 
 const app = express();
 const JWT_SECRET = String(process.env.JWT_SECRET || '').trim();
+const AUTH_COOKIE_NAME = 'auth_token';
 const PASSWORD_RESET_TOKEN_TTL_MS = 1000 * 60 * 30;
 
 if (!JWT_SECRET) {
@@ -47,6 +49,14 @@ const authLimiter = rateLimit({
   message: { error: 'Demasiados intentos de autenticación. Intenta más tarde.' },
 });
 
+const authCookieOptions = {
+  httpOnly: true,
+  secure: isProduction,
+  sameSite: isProduction ? 'none' : 'lax',
+  maxAge: 24 * 60 * 60 * 1000,
+  path: '/',
+} as const;
+
 const allowedOrigins = Array.from(
   new Set(
     [
@@ -57,6 +67,7 @@ const allowedOrigins = Array.from(
 );
 
 const corsOptions: cors.CorsOptions = {
+  credentials: true,
   origin: (origin, callback) => {
     if (!origin) {
       callback(null, true);
@@ -135,6 +146,7 @@ app.use(
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true })); // Añade esta línea para formularios
+app.use(cookieParser());
 app.use(passport.initialize());
 
 if (isProduction) {
@@ -230,8 +242,9 @@ app.post('/api/auth/register', async (req, res) => {
 
     // 3. Crear el token de sesión
     const token = jwt.sign({ id: user.id }, JWT_SECRET, { expiresIn: '24h' });
+    res.cookie(AUTH_COOKIE_NAME, token, authCookieOptions);
 
-    res.json({ user, token });
+    res.json({ user });
   } catch (err) {
     console.error(err);
     const error = err as { code?: string };
@@ -281,11 +294,22 @@ app.post('/api/auth/login', async (req, res) => {
 
     // No enviamos la contraseña de vuelta al cliente
     const { password: _, ...userFields } = user;
-    res.json({ user: userFields, token });
+    res.cookie(AUTH_COOKIE_NAME, token, authCookieOptions);
+    res.json({ user: userFields });
   } catch (err) {
     console.error('Error en login:', err);
     res.status(500).json({ error: "Error en el servidor" });
   }
+});
+
+app.post('/api/auth/logout', (_req: Request, res: Response) => {
+  res.clearCookie(AUTH_COOKIE_NAME, {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? 'none' : 'lax',
+    path: '/',
+  });
+  res.json({ success: true });
 });
 
 app.post('/api/auth/forgot-password', async (req, res) => {

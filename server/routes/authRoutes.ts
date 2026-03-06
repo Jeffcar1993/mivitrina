@@ -5,8 +5,10 @@ import { randomBytes } from 'crypto';
 
 const router = express.Router();
 const JWT_SECRET = String(process.env.JWT_SECRET || '').trim();
+const AUTH_COOKIE_NAME = 'auth_token';
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
 const OAUTH_CODE_TTL_MS = 1000 * 60 * 2;
+const isProduction = process.env.NODE_ENV === 'production';
 
 if (!JWT_SECRET) {
   throw new Error('JWT_SECRET no está configurado. Define una clave segura en variables de entorno.');
@@ -19,6 +21,14 @@ type OAuthSessionPayload = {
 };
 
 const oauthCodeStore = new Map<string, OAuthSessionPayload>();
+
+const authCookieOptions = {
+  httpOnly: true,
+  secure: isProduction,
+  sameSite: isProduction ? 'none' : 'lax',
+  maxAge: 24 * 60 * 60 * 1000,
+  path: '/',
+} as const;
 
 const cleanExpiredOAuthCodes = (): void => {
   const now = Date.now();
@@ -87,7 +97,8 @@ router.post('/oauth/exchange', (req, res) => {
   }
 
   oauthCodeStore.delete(oauthCode);
-  return res.json({ token: oauthPayload.token, user: oauthPayload.user });
+  res.cookie(AUTH_COOKIE_NAME, oauthPayload.token, authCookieOptions);
+  return res.json({ user: oauthPayload.user });
 });
 
 export default router;

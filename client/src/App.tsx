@@ -35,7 +35,7 @@ const PRODUCTS_PAGE_SIZE = 24;
 export default function App() {
   const [selectedCategory, setSelectedCategory] = useState<string>("Todos");
   const [searchQuery, setSearchQuery] = useState<string>("");
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => Boolean(localStorage.getItem("token")));
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => Boolean(localStorage.getItem("user")));
   const [currentUserId] = useState<number | null>(() => {
     const user = localStorage.getItem("user");
     if (!user) return null;
@@ -119,8 +119,13 @@ export default function App() {
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
+  const handleLogout = async () => {
+    try {
+      await api.post('/auth/logout');
+    } catch (error) {
+      console.error('Error cerrando sesión en servidor:', error);
+    }
+
     localStorage.removeItem('user');
     setIsAuthenticated(false);
     setMobileMenuOpen(false);
@@ -174,7 +179,7 @@ export default function App() {
                 </Button>
                 <CartSheet />
                 <Button 
-                  onClick={handleLogout}
+                  onClick={() => void handleLogout()}
                   variant="ghost"
                   size="icon"
                   className="h-10 w-10 text-red-600 hover:bg-red-50 hover:text-red-700"

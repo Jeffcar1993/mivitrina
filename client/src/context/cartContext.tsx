@@ -57,8 +57,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     if (!isLoaded || hasSyncedRef.current) return;
     hasSyncedRef.current = true;
 
-    const token = localStorage.getItem('token');
-    if (!token) {
+    const hasSessionUser = Boolean(localStorage.getItem('user'));
+    if (!hasSessionUser) {
       setIsHydrated(true);
       return;
     }
@@ -91,7 +91,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           typeof (error as { response?: { status?: number } }).response?.status === 'number' &&
           (error as { response?: { status?: number } }).response?.status === 401
         ) {
-          localStorage.removeItem('token');
+          localStorage.removeItem('user');
         }
       } finally {
         setIsHydrated(true);
@@ -115,8 +115,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   // Guardar carrito en backend si está autenticado
   useEffect(() => {
     if (!isLoaded || !isHydrated || isSyncingRef.current) return;
-    const token = localStorage.getItem('token');
-    if (!token) return;
+    const hasSessionUser = Boolean(localStorage.getItem('user'));
+    if (!hasSessionUser) return;
 
     const syncToServer = async () => {
       try {
@@ -131,7 +131,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           typeof (error as { response?: { status?: number } }).response?.status === 'number' &&
           (error as { response?: { status?: number } }).response?.status === 401
         ) {
-          localStorage.removeItem('token');
+          localStorage.removeItem('user');
         }
       }
     };
@@ -169,8 +169,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setCart([]);
     
     // También limpiar del servidor si está autenticado
-    const token = localStorage.getItem('token');
-    if (token) {
+    const hasSessionUser = Boolean(localStorage.getItem('user'));
+    if (hasSessionUser) {
       try {
         await api.delete('/cart/clear');
       } catch (error) {

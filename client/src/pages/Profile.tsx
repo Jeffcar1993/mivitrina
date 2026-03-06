@@ -186,9 +186,9 @@ export default function Profile() {
     setDeletingProfile(true);
     try {
       await api.delete(`/api/user/${user.id}`);
+      await api.post('/auth/logout');
       
       // Limpiar datos locales
-      localStorage.removeItem('token');
       localStorage.removeItem('user');
       
       toast.success('Perfil eliminado correctamente');
@@ -207,8 +207,13 @@ export default function Profile() {
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
+  const handleLogout = async () => {
+    try {
+      await api.post('/auth/logout');
+    } catch (error) {
+      console.error('Error cerrando sesión en servidor:', error);
+    }
+
     localStorage.removeItem('user');
     setMobileMenuOpen(false);
     navigate('/login');
@@ -327,7 +332,7 @@ export default function Profile() {
                     </SheetClose>
                   )}
                   <Button
-                    onClick={handleLogout}
+                    onClick={() => void handleLogout()}
                     variant="outline"
                     className="justify-center border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
                   >

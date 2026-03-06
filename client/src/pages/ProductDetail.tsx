@@ -45,7 +45,7 @@ export default function ProductDetail() {
   const [mySellerRating, setMySellerRating] = useState(0);
   const [ratingSubmitting, setRatingSubmitting] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => Boolean(localStorage.getItem("token")));
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => Boolean(localStorage.getItem("user")));
   const [currentUserId] = useState<number | null>(() => {
     const rawUser = localStorage.getItem("user");
     if (!rawUser) return null;
@@ -80,8 +80,8 @@ export default function ProductDetail() {
       setSellerAverageRating(Number(summaryRes.data?.averageRating ?? 0));
       setSellerRatingsCount(Number(summaryRes.data?.totalRatings ?? 0));
 
-      const token = localStorage.getItem("token");
-      if (!token) {
+      const rawUser = localStorage.getItem("user");
+      if (!rawUser) {
         setMySellerRating(0);
         return;
       }
@@ -202,8 +202,13 @@ export default function ProductDetail() {
       .finally(() => setRatingSubmitting(false));
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
+  const handleLogout = async () => {
+    try {
+      await api.post('/auth/logout');
+    } catch (error) {
+      console.error('Error cerrando sesión en servidor:', error);
+    }
+
     localStorage.removeItem('user');
     setIsAuthenticated(false);
     setMobileMenuOpen(false);
@@ -262,7 +267,7 @@ export default function ProductDetail() {
                 </Button>
                 <CartSheet />
                 <Button
-                  onClick={handleLogout}
+                  onClick={() => void handleLogout()}
                   variant="ghost"
                   size="icon"
                   className="h-10 w-10 text-red-600 hover:bg-red-50 hover:text-red-700"

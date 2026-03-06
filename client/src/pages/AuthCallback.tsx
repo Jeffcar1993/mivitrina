@@ -35,18 +35,16 @@ export default function AuthCallback() {
 
     const exchangeOAuthCode = async () => {
       try {
-        const response = await api.post<{ token: string; user: unknown }>('/auth/oauth/exchange', {
+        const response = await api.post<{ user: unknown }>('/auth/oauth/exchange', {
           code: oauthCode,
         });
 
-        const token = response.data?.token;
         const user = response.data?.user;
 
-        if (!token || !user) {
+        if (!user) {
           throw new Error('Respuesta OAuth incompleta');
         }
 
-        localStorage.setItem('token', token);
         localStorage.setItem('user', JSON.stringify(user));
 
         const parsedUser = user as { username?: string };

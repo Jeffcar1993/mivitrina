@@ -16,6 +16,20 @@ if (!JWT_SECRET) {
 
 const roundMoney = (value: number): number => Math.round(value * 100) / 100;
 
+const extractTokenFromRequest = (req: Request): string | null => {
+  const authHeader = req.headers.authorization;
+  if (typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
+    return authHeader.replace('Bearer ', '').trim();
+  }
+
+  const cookieToken = req.cookies?.auth_token;
+  if (typeof cookieToken === 'string' && cookieToken.trim().length > 0) {
+    return cookieToken.trim();
+  }
+
+  return null;
+};
+
 const isPaidLikeStatus = (status: unknown): boolean => {
   const normalized = String(status || '').trim().toLowerCase();
   return normalized === 'pagado' || normalized === 'completed' || normalized === 'completado';
@@ -79,11 +93,10 @@ router.post('/create', async (req: Request, res: Response) => {
     const orderNumber = `ORD-${Date.now()}`;
 
     // Obtener user_id si está autenticado
-    const authHeader = req.headers.authorization;
     let userId: number | null = null;
-    if (authHeader?.startsWith('Bearer ')) {
+    const token = extractTokenFromRequest(req);
+    if (token) {
       try {
-        const token = authHeader.replace('Bearer ', '').trim();
         const decoded = jwt.verify(token, JWT_SECRET) as { id?: number };
         if (typeof decoded.id === 'number' && Number.isFinite(decoded.id)) {
           userId = decoded.id;
