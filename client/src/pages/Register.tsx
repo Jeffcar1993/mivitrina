@@ -49,9 +49,21 @@ export default function Register() {
     setPasswordValidation(validation);
   };
 
+  const allowedEmailExtensions = ['.com', '.net', '.org', '.co', '.es', '.edu', '.gov', '.io', '.dev'];
+  const isValidEmailExtension = (email: string) => {
+    const lower = email.toLowerCase();
+    return allowedEmailExtensions.some(ext => lower.endsWith(ext));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
+    // Validar extensión de correo electrónico
+    if (!isValidEmailExtension(formData.email)) {
+      toast.error("El correo electrónico debe tener una extensión válida (.com, .net, .org, etc.)");
+      return;
+    }
+
     // Validar que la contraseña sea segura
     if (!passwordValidation.isValid) {
       toast.error("Contraseña no segura", { 
