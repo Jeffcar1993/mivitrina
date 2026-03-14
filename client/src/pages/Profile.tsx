@@ -374,7 +374,7 @@ export default function Profile() {
               {!editing && (
                 <Button
                   onClick={() => setEditing(true)}
-                  className="bg-[#C05673] hover:bg-[#B04B68]"
+                  className="bg-[#C05673] hover:bg-[#B04B68] text-white"
                 >
                   Editar
                 </Button>

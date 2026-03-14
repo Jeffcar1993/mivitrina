@@ -21,6 +21,9 @@ export default function ForgotPassword() {
   const [resetUrl, setResetUrl] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
+
+
+
     e.preventDefault();
     setLoading(true);
     setResetUrl(null);
@@ -35,6 +38,8 @@ export default function ForgotPassword() {
           response.data?.message ||
           'Si el correo existe, recibirás instrucciones para recuperar tu contraseña.',
       });
+
+      setEmail(''); // Limpiar email para evitar duplicidad
 
       if (response.data?.resetUrl) {
         setResetUrl(response.data.resetUrl);
