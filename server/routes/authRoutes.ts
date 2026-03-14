@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { createHash, randomBytes } from 'crypto';
 import { query } from '../config/db.js';
+import { Resend } from 'resend';
 
 const router = express.Router();
 const JWT_SECRET = String(process.env.JWT_SECRET || '').trim();
@@ -12,6 +13,7 @@ const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
 const OAUTH_CODE_TTL_MS = 1000 * 60 * 2;
 const PASSWORD_RESET_TOKEN_TTL_MS = 1000 * 60 * 30;
 const isProduction = process.env.NODE_ENV === 'production';
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 if (!JWT_SECRET) {
   throw new Error('JWT_SECRET no está configurado. Define una clave segura en variables de entorno.');
@@ -208,13 +210,13 @@ router.post('/forgot-password', async (req, res) => {
     await ensurePasswordResetColumns();
 
     const userResult = await query(
-      'SELECT id FROM users WHERE LOWER(email) = LOWER($1) LIMIT 1',
+      'SELECT id, username FROM users WHERE LOWER(email) = LOWER($1) LIMIT 1',
       [normalizedEmail]
     );
 
-    let resetUrl: string | undefined;
     if (userResult.rows.length > 0) {
       const userId = Number(userResult.rows[0].id);
+      const username = userResult.rows[0].username;
       const { rawToken, tokenHash, expiresAt } = buildPasswordResetToken();
 
       await query(
@@ -225,13 +227,39 @@ router.post('/forgot-password', async (req, res) => {
         [tokenHash, expiresAt, userId]
       );
 
-      resetUrl = `${CLIENT_URL}/reset-password?token=${rawToken}`;
+      const resetUrl = `${CLIENT_URL}/reset-password?token=${rawToken}`;
+
+      // --- CAMBIO CLAVE: ENVÍO DE EMAIL REAL ---
+      try {
+        await resend.emails.send({
+          from: 'MiVitrina <onboarding@resend.dev>', // Luego lo cambias por tu dominio
+          to: [normalizedEmail],
+          subject: 'Recuperar contraseña - MiVitrina',
+          html: `
+            <div style="font-family: sans-serif; max-width: 600px; margin: auto; border: 1px solid #eee; padding: 20px;">
+              <h2 style="color: #C05673;">Hola, ${username}</h2>
+              <p>Recibimos una solicitud para restablecer tu contraseña en <strong>MiVitrina</strong>.</p>
+              <p>Haz clic en el botón de abajo para elegir una nueva contraseña. Este enlace expira en 30 minutos.</p>
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="${resetUrl}" style="background-color: #C05673; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">
+                  Restablecer contraseña
+                </a>
+              </div>
+              <p style="font-size: 0.8em; color: #666;">Si no solicitaste este cambio, puedes ignorar este correo de forma segura.</p>
+            </div>
+          `
+        });
+      } catch (mailError) {
+        console.error("Error enviando email:", mailError);
+        // No detenemos el flujo para no dar pistas a atacantes, 
+        // pero lo logueamos para nosotros.
+      }
     }
 
+    // Siempre devolvemos éxito por seguridad (evita enumeración de usuarios)
     return res.json({
       success: true,
       message: 'Si el correo está registrado, enviamos instrucciones para recuperar tu contraseña.',
-      resetUrl: process.env.NODE_ENV !== 'production' ? resetUrl : undefined,
     });
   } catch (err) {
     console.error(err);
