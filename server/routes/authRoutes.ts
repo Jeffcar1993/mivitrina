@@ -13,7 +13,7 @@ const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
 const OAUTH_CODE_TTL_MS = 1000 * 60 * 2;
 const PASSWORD_RESET_TOKEN_TTL_MS = 1000 * 60 * 30;
 const isProduction = process.env.NODE_ENV === 'production';
-const resend = new Resend(process.env.RESEND_API_KEY);
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 if (!JWT_SECRET) {
   throw new Error('JWT_SECRET no está configurado. Define una clave segura en variables de entorno.');
@@ -231,6 +231,7 @@ router.post('/forgot-password', async (req, res) => {
 
       // --- CAMBIO CLAVE: ENVÍO DE EMAIL REAL ---
       try {
+        if (!resend) throw new Error('RESEND_API_KEY no configurado en .env');
         await resend.emails.send({
           from: 'MiVitrina <onboarding@resend.dev>', // Luego lo cambias por tu dominio
           to: [normalizedEmail],
