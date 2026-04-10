@@ -5,6 +5,7 @@ import bcrypt from 'bcryptjs';
 import { createHash, randomBytes } from 'crypto';
 import { query } from '../config/db.js';
 import { Resend } from 'resend';
+import { authMiddleware, type AuthRequest } from '../middleware/auth.js';
 
 const router = express.Router();
 const JWT_SECRET = String(process.env.JWT_SECRET || '').trim();
@@ -395,6 +396,137 @@ router.post('/oauth/exchange', (req, res) => {
   oauthCodeStore.delete(oauthCode);
   res.cookie(AUTH_COOKIE_NAME, oauthPayload.token, authCookieOptions);
   return res.json({ user: oauthPayload.user });
+});
+
+// ==================== MERCADO PAGO OAUTH ====================
+
+const MP_OAUTH_URL = 'https://auth.mercadopago.com/authorization';
+const MP_TOKEN_URL = 'https://api.mercadopago.com/oauth/token';
+const MP_STATE_TTL_SECONDS = 600; // 10 minutos
+
+// GET /auth/mercadopago/url
+// Retorna la URL de autorización OAuth de Mercado Pago para el usuario autenticado.
+// El state es un JWT firmado que contiene el userId y un nonce para prevenir CSRF.
+router.get('/mercadopago/url', authMiddleware, (req: AuthRequest, res) => {
+  const appId = String(process.env.MERCADO_PAGO_APP_ID || '').trim();
+  const redirectUri = String(process.env.MERCADO_PAGO_REDIRECT_URI || 'http://localhost:5173/auth/mp/callback').trim();
+
+  if (!appId) {
+    return res.status(500).json({ error: 'MERCADO_PAGO_APP_ID no configurado en el servidor' });
+  }
+
+  const state = jwt.sign(
+    { userId: req.userId, nonce: randomBytes(16).toString('hex') },
+    JWT_SECRET,
+    { expiresIn: MP_STATE_TTL_SECONDS }
+  );
+
+  const url = new URL(MP_OAUTH_URL);
+  url.searchParams.set('client_id', appId);
+  url.searchParams.set('response_type', 'code');
+  url.searchParams.set('platform_id', 'mp');
+  url.searchParams.set('state', state);
+  url.searchParams.set('redirect_uri', redirectUri);
+
+  return res.json({ url: url.toString(), state });
+});
+
+interface MercadoPagoTokenResponse {
+  access_token: string;
+  token_type: string;
+  expires_in: number;
+  scope: string;
+  user_id: number;
+  refresh_token?: string;
+  public_key?: string;
+  live_mode?: boolean;
+}
+
+// POST /auth/mercadopago/exchange
+// Intercambia el authorization code por access_token + user_id (=collector_id).
+// Guarda el user_id como mercado_pago_account_id en la tabla users.
+router.post('/mercadopago/exchange', authMiddleware, async (req: AuthRequest, res) => {
+  const code = String(req.body?.code || '').trim();
+  const state = String(req.body?.state || '').trim();
+
+  if (!code) {
+    return res.status(400).json({ error: 'El código de autorización es requerido' });
+  }
+
+  if (!state) {
+    return res.status(400).json({ error: 'El parámetro state es requerido' });
+  }
+
+  // Verificar state JWT: previene ataques CSRF y confirma el userId
+  let stateUserId: number;
+  try {
+    const decoded = jwt.verify(state, JWT_SECRET) as { userId: number };
+    stateUserId = decoded.userId;
+  } catch {
+    return res.status(400).json({ error: 'El estado OAuth expiró o es inválido. Intenta conectar de nuevo.' });
+  }
+
+  if (stateUserId !== req.userId) {
+    return res.status(403).json({ error: 'Estado OAuth no coincide con el usuario autenticado' });
+  }
+
+  const appId = String(process.env.MERCADO_PAGO_APP_ID || '').trim();
+  const clientSecret = String(process.env.MERCADO_PAGO_CLIENT_SECRET || '').trim();
+  const redirectUri = String(process.env.MERCADO_PAGO_REDIRECT_URI || 'http://localhost:5173/auth/mp/callback').trim();
+
+  if (!appId || !clientSecret) {
+    return res.status(500).json({ error: 'Credenciales de Mercado Pago no configuradas en el servidor' });
+  }
+
+  try {
+    // Intercambiar code → access_token + user_id con la API de MP
+    const tokenResponse = await fetch(MP_TOKEN_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({
+        client_id: appId,
+        client_secret: clientSecret,
+        code,
+        redirect_uri: redirectUri,
+        grant_type: 'authorization_code',
+      }),
+    });
+
+    if (!tokenResponse.ok) {
+      const errorBody = await tokenResponse.text();
+      console.error('MP token exchange error:', tokenResponse.status, errorBody);
+      return res.status(502).json({ error: 'Mercado Pago rechazó la autorización. Intenta de nuevo.' });
+    }
+
+    const tokenData = (await tokenResponse.json()) as MercadoPagoTokenResponse;
+
+    const mpUserId = String(tokenData.user_id ?? '').trim();
+    if (!mpUserId || mpUserId === 'undefined' || mpUserId === '0') {
+      console.error('MP token exchange: user_id ausente en respuesta', tokenData);
+      return res.status(502).json({ error: 'Mercado Pago no devolvió un user_id válido' });
+    }
+
+    // Guardar user_id como mercado_pago_account_id y el access_token del vendedor
+    const result = await query(
+      `UPDATE users
+       SET mercado_pago_account_id  = $1,
+           mp_access_token           = $2,
+           payout_automation_enabled = true
+       WHERE id = $3
+       RETURNING id, username, email, bio, phone, profile_image,
+                 mercado_pago_account_id, payout_automation_enabled, created_at`,
+      [mpUserId, tokenData.access_token, req.userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    return res.json({ user: result.rows[0] });
+  } catch (err) {
+    console.error('Error en mercadopago/exchange:', err);
+    return res.status(500).json({ error: 'Error al conectar con Mercado Pago' });
+  }
 });
 
 export default router;

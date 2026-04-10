@@ -27,6 +27,7 @@ const HowItWorks = lazy(() => import('./pages/HowItWorks.tsx'))
 const SellInfo = lazy(() => import('./pages/SellInfo.tsx'))
 const BuyInfo = lazy(() => import('./pages/BuyInfo.tsx'))
 const SellerPayoutSetup = lazy(() => import('./pages/SellerPayoutSetup.tsx'))
+const MercadoPagoCallback = lazy(() => import('./pages/MercadoPagoCallback.tsx'))
 
 function ScrollToTop() {
   const { pathname } = useLocation()
@@ -154,6 +155,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
               <Route path="/info-vender" element={<SellInfo />} />
               <Route path="/info-comprar" element={<BuyInfo />} />
               <Route path="/configurar-cobros" element={<SellerPayoutSetup />} />
+              <Route path="/auth/mp/callback" element={<MercadoPagoCallback />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>
