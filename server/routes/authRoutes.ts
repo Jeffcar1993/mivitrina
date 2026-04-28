@@ -234,7 +234,7 @@ router.post('/forgot-password', async (req, res) => {
       try {
         if (!resend) throw new Error('RESEND_API_KEY no configurado en .env');
         await resend.emails.send({
-          from: 'MiVitrina <onboarding@resend.dev>', // Luego lo cambias por tu dominio
+          from: 'MiVitrina <soporte@mivitrina.shop>',
           to: [normalizedEmail],
           subject: 'Recuperar contraseña - MiVitrina',
           html: `
