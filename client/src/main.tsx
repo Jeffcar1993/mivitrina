@@ -27,7 +27,7 @@ const HowItWorks = lazy(() => import('./pages/HowItWorks.tsx'))
 const SellInfo = lazy(() => import('./pages/SellInfo.tsx'))
 const BuyInfo = lazy(() => import('./pages/BuyInfo.tsx'))
 const SellerPayoutSetup = lazy(() => import('./pages/SellerPayoutSetup.tsx'))
-const MercadoPagoCallback = lazy(() => import('./pages/MercadoPagocallback'))
+const MercadoPagoCallback = lazy(() => import('./pages/MercadoPagoCallback'))
 
 function ScrollToTop() {
   const { pathname } = useLocation()
