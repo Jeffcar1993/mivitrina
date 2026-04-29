@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
-import LogoImage from '../assets/Logo.webp';
+import LogoImage from '../assets/logotipo.png';
 import { Footer } from '../components/Footer';
 
 export default function ResetPassword() {
@@ -62,9 +62,9 @@ export default function ResetPassword() {
   return (
     <div className="min-h-screen flex flex-col bg-[#FBFBFB]">
       <header className="sticky top-0 z-10 w-full border-b border-slate-200 bg-white/80 backdrop-blur">
-        <div className="container mx-auto flex h-16 items-center justify-between px-4">
+        <div className="container mx-auto flex h-20 items-center justify-between px-4">
           <Link to="/" className="flex items-center hover:opacity-80 transition-opacity">
-            <img src={LogoImage} alt="MiVitrina Logo" className="h-12 w-auto object-contain" />
+            <img src={LogoImage} alt="MiVitrina Logo" className="h-16 w-auto object-contain md:h-20" />
           </Link>
         </div>
       </header>

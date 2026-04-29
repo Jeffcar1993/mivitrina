@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import LogoImage from "../assets/Logo.webp";
+import LogoImage from "../assets/logotipo.png";
 import VisaLogo from "../assets/visa.svg";
 import MercadoPagoLogo from "../assets/mercado-pago.svg";
 import { cn } from "../lib/utils";
@@ -15,7 +15,7 @@ export function Footer({ className }: FooterProps) {
         <div className="grid grid-cols-1 gap-8 md:grid-cols-5">
           <div className="space-y-3 md:col-span-2">
             <div className="flex items-center">
-              <img src={LogoImage} alt="MiVitrina Logo" className="h-10 w-auto object-contain" />
+              <img src={LogoImage} alt="MiVitrina Logo" className="h-16 w-auto object-contain md:h-20" />
             </div>
             <p className="text-sm text-slate-500">
               Tu escaparate digital para comprar y vender productos de forma segura.
@@ -39,7 +39,7 @@ export function Footer({ className }: FooterProps) {
               <p className="font-semibold text-slate-800">Soporte</p>
               <div className="flex flex-col gap-1 text-slate-500">
                 <span>contacto@mivitrina.com</span>
-                <span>+57 300 000 0000</span>
+                <span>+57 319 323 8434</span>
                 <span>Atención 24/7</span>
               </div>
             </div>

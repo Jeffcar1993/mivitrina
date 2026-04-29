@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { ArrowRight, Check, X, Eye, EyeOff, Menu } from "lucide-react";
 import { toast } from "sonner";
-import LogoImage from '../assets/Logo.webp';
+import LogoImage from '../assets/logotipo.png';
 import { Footer } from '../components/Footer';
 import { validatePassword, getPasswordStrengthLabel, getPasswordStrengthColor } from '../lib/passwordValidator';
 
@@ -105,9 +105,9 @@ export default function Register() {
   return (
     <div className="min-h-screen flex flex-col bg-[#FBFBFB]">
       <header className="sticky top-0 z-10 w-full border-b border-slate-200 bg-white/80 backdrop-blur">
-        <div className="container mx-auto flex h-16 items-center justify-between px-4">
+        <div className="container mx-auto flex h-20 items-center justify-between px-4">
           <Link to="/" className="flex items-center hover:opacity-80 transition-opacity">
-            <img src={LogoImage} alt="MiVitrina Logo" className="h-12 w-auto object-contain" />
+            <img src={LogoImage} alt="MiVitrina Logo" className="h-16 w-auto object-contain md:h-20" />
           </Link>
           <div className="hidden md:flex items-center gap-2">
             <Button asChild variant="ghost" className="font-semibold">
@@ -153,8 +153,8 @@ export default function Register() {
         {/* Lado Izquierdo: Visual */}
         <div className="hidden lg:flex bg-[#C05673] items-center justify-center p-12 text-white">
           <div className="max-w-md space-y-6">
-            <div className="rounded-2xl bg-white/10 p-4 w-fit">
-              <img src={LogoImage} alt="MiVitrina Logo" className="h-16 w-auto object-contain brightness-0 invert" />
+            <div className="w-fit rounded-[28px] bg-white px-6 py-5 shadow-[0_20px_60px_rgba(0,0,0,0.18)] ring-1 ring-white/70">
+              <img src={LogoImage} alt="MiVitrina Logo" className="h-28 w-auto object-contain xl:h-32" />
             </div>
             <h1 className="text-5xl font-black leading-tight">Empieza a vender hoy mismo.</h1>
             <p className="text-xl text-[#FBEFF3] font-light">

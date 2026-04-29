@@ -11,7 +11,7 @@ import { ArrowLeft, Camera, Save, ShoppingBag, Package, Trash2, AlertCircle, Men
 import { toast } from "sonner";
 import api from '../lib/axios';
 import type { User } from '../types';
-import LogoImage from '../assets/Logo.webp';
+import LogoImage from '../assets/logotipo.png';
 import { Footer } from '../components/Footer';
 
 const ADMIN_EMAIL = String(import.meta.env.VITE_ADMIN_EMAIL || '').trim().toLowerCase();
@@ -225,7 +225,7 @@ export default function Profile() {
       <div className="flex h-screen w-full flex-col items-center justify-center bg-white">
         <div className="relative flex items-center justify-center">
           <div className="h-24 w-24 animate-spin rounded-full border-4 border-slate-200 border-t-[#C05673]"></div>
-          <img src={LogoImage} alt="MiVitrina Logo" className="absolute h-16 w-16 object-contain" />
+          <img src={LogoImage} alt="MiVitrina Logo" className="absolute h-20 w-20 object-contain md:h-24 md:w-24" />
         </div>
         <p className="mt-4 animate-pulse text-sm font-medium text-slate-500">Cargando perfil...</p>
       </div>
@@ -282,9 +282,9 @@ export default function Profile() {
     <div className="min-h-screen flex flex-col bg-[#FBFBFB]">
       {/* Header */}
       <header className="sticky top-0 z-10 w-full border-b border-slate-200 bg-white/80 backdrop-blur">
-        <div className="container mx-auto flex h-16 items-center justify-between px-4">
+        <div className="container mx-auto flex h-20 items-center justify-between px-4">
           <Link to="/" className="flex items-center hover:opacity-80 transition-opacity">
-            <img src={LogoImage} alt="MiVitrina Logo" className="h-12 w-auto object-contain" />
+            <img src={LogoImage} alt="MiVitrina Logo" className="h-16 w-auto object-contain md:h-20" />
           </Link>
           <div className="hidden md:flex items-center gap-2">
             <Button asChild variant="ghost" className="font-semibold">
@@ -363,8 +363,8 @@ export default function Profile() {
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="rounded-full bg-[#C05673] p-3">
-                  <img src={LogoImage} alt="MiVitrina Logo" className="h-8 w-8 object-contain brightness-0 invert" />
+                <div className="rounded-2xl bg-white p-2.5 shadow-sm ring-1 ring-[#EACED7]">
+                  <img src={LogoImage} alt="MiVitrina Logo" className="h-16 w-auto object-contain md:h-20" />
                 </div>
                 <div>
                   <p className="text-xl font-bold text-slate-900">Mi Perfil</p>

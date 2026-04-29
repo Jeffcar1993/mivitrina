@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Eye, EyeOff, Menu } from "lucide-react";
 import { toast } from "sonner";
-import LogoImage from '../assets/Logo.webp';
+import LogoImage from '../assets/logotipo.png';
 import { Footer } from '../components/Footer';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
@@ -44,9 +44,9 @@ export default function Login() {
   return (
     <div className="min-h-screen flex flex-col bg-[#FBFBFB]">
       <header className="sticky top-0 z-10 w-full border-b border-slate-200 bg-white/80 backdrop-blur">
-        <div className="container mx-auto flex h-16 items-center justify-between px-4">
+        <div className="container mx-auto flex h-20 items-center justify-between px-4">
           <Link to="/" className="flex items-center hover:opacity-80 transition-opacity">
-            <img src={LogoImage} alt="MiVitrina Logo" className="h-12 w-auto object-contain" />
+            <img src={LogoImage} alt="MiVitrina Logo" className="h-16 w-auto object-contain md:h-20" />
           </Link>
           <div className="hidden md:flex items-center gap-2">
             <Button asChild variant="ghost" className="font-semibold">
@@ -97,7 +97,7 @@ export default function Login() {
         <div className="w-full max-w-md bg-white rounded-3xl shadow-sm p-8 border border-slate-200">
           <div className="text-center mb-10">
             <div className="inline-flex items-center justify-center mb-4">
-              <img src={LogoImage} alt="MiVitrina Logo" className="h-16 w-auto object-contain" />
+              <img src={LogoImage} alt="MiVitrina Logo" className="h-24 w-auto object-contain md:h-28" />
             </div>
             <h2 className="text-3xl font-black text-slate-900">Bienvenido</h2>
             <p className="text-slate-500">Ingresa tus datos para continuar.</p>

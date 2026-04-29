@@ -17,7 +17,7 @@ import { ShoppingCart, Trash2, LogOut, User, Plus, Search, Menu, House, LogIn, U
 import { AddProductForm } from "./components/addProductForm";
 import { CartSheet } from './components/cartSheet';
 import { Footer } from './components/Footer';
-import LogoImage from './assets/Logo.webp';
+import LogoImage from './assets/logotipo.png';
 
 interface ProductsPaginatedResponse {
   items: Product[];
@@ -137,7 +137,7 @@ export default function App() {
       <div className="flex h-screen w-full flex-col items-center justify-center bg-white">
         <div className="relative flex items-center justify-center">
           <div className="h-32 w-32 animate-spin rounded-full border-4 border-slate-200 border-t-[#C05673]"></div>
-          <img src={LogoImage} alt="MiVitrina Logo" className="absolute h-20 w-20 object-contain" />
+          <img src={LogoImage} alt="MiVitrina Logo" className="absolute h-24 w-24 object-contain md:h-28 md:w-28" />
         </div>
         <p className="mt-4 animate-pulse text-sm font-medium text-slate-500">Preparando tu escaparate...</p>
       </div>
@@ -148,9 +148,9 @@ export default function App() {
     <div className="min-h-screen bg-[#FBFBFB]">
       {/* Header con efecto Blur */}
       <header className="sticky top-0 z-50 w-full border-b border-slate-200 bg-white/80 backdrop-blur-xl">
-        <div className="container mx-auto flex h-16 items-center justify-between px-4">
+        <div className="container mx-auto flex h-20 items-center justify-between px-4">
           <div className="flex items-center">
-            <img src={LogoImage} alt="MiVitrina Logo" className="h-14 w-auto object-contain" />
+            <img src={LogoImage} alt="MiVitrina Logo" className="h-[4.5rem] w-auto object-contain md:h-20" />
           </div>
           
           <div className="hidden md:flex items-center gap-2">

@@ -12,7 +12,7 @@ import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle, SheetTrigger 
 import { AddProductForm } from "@/components/addProductForm";
 import { CartSheet } from "@/components/cartSheet";
 import { Footer } from "@/components/Footer";
-import LogoImage from '../assets/Logo.webp';
+import LogoImage from '../assets/logotipo.png';
 
 // Iconos
 import { 
@@ -236,9 +236,9 @@ export default function ProductDetail() {
     <div className="min-h-screen bg-[#FBFBFB]">
       {/* Header Reutilizado */}
       <header className="sticky top-0 z-50 w-full border-b border-slate-200 bg-white/70 backdrop-blur-xl">
-        <div className="container mx-auto flex h-16 items-center justify-between px-4">
+        <div className="container mx-auto flex h-20 items-center justify-between px-4">
           <Link to="/" className="flex items-center group">
-            <img src={LogoImage} alt="MiVitrina Logo" className="h-12 w-auto object-contain transition-transform group-hover:scale-110" />
+            <img src={LogoImage} alt="MiVitrina Logo" className="h-16 w-auto object-contain transition-transform group-hover:scale-110 md:h-20" />
           </Link>
           
           <div className="hidden md:flex items-center gap-2">
