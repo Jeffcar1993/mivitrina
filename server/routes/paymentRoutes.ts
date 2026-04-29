@@ -3,6 +3,7 @@ import { query } from '../config/db.js';
 import { MercadoPagoConfig, Preference } from 'mercadopago';
 import { processAutomaticPayoutsForOrder } from '../services/automaticPayouts.js';
 import { withTransaction } from '../config/db.js';
+import { Resend } from 'resend';
 
 // Configurar Mercado Pago (usa tu access token)
 const client = new MercadoPagoConfig({
@@ -11,6 +12,107 @@ const client = new MercadoPagoConfig({
     timeout: 20000, // Aumentar timeout a 20 segundos para evitar timeouts
   },
 });
+
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+
+const notifySellerOfSale = async (orderId: number): Promise<void> => {
+  if (!resend) return;
+
+  try {
+    const result = await query(
+      `SELECT
+        u.email AS seller_email,
+        u.username AS seller_name,
+        p.title AS product_title,
+        o.customer_name,
+        o.customer_address,
+        o.customer_city,
+        o.customer_phone,
+        o.order_number,
+        oi.seller_net_amount,
+        o.currency_id
+       FROM orders o
+       JOIN order_items oi ON oi.order_id = o.id
+       JOIN products p ON p.id = oi.product_id
+       JOIN users u ON u.id = oi.seller_id
+       WHERE o.id = $1`,
+      [orderId]
+    );
+
+    if (result.rows.length === 0) return;
+
+    // Agrupar por vendedor en caso de múltiples productos
+    const bySeller = new Map<string, Array<Record<string, unknown>>>();
+    for (const row of result.rows) {
+      const email = String(row.seller_email || '');
+      if (!email) continue;
+      if (!bySeller.has(email)) bySeller.set(email, []);
+      bySeller.get(email)!.push(row as Record<string, unknown>);
+    }
+
+    for (const [sellerEmail, rows] of bySeller.entries()) {
+      const first = rows[0];
+      if (!first) continue;
+      const sellerName = String(first.seller_name || 'Vendedor');
+      const orderNumber = String(first.order_number || '');
+      const currency = String(first.currency_id || 'COP');
+      const customerName = String(first.customer_name || '');
+      const customerPhone = String(first.customer_phone || '-');
+      const customerAddress = String(first.customer_address || '');
+      const customerCity = String(first.customer_city || '');
+
+      const productRows = rows
+        .map(
+          (r) =>
+            `<tr>
+              <td style="padding:8px;border-bottom:1px solid #eee;">${String(r.product_title || '')}</td>
+              <td style="padding:8px;border-bottom:1px solid #eee;text-align:right;">${currency} ${Number(r.seller_net_amount || 0).toLocaleString('es-CO')}</td>
+            </tr>`
+        )
+        .join('');
+
+      await resend.emails.send({
+        from: 'MiVitrina <soporte@mivitrina.shop>',
+        to: [sellerEmail],
+        subject: `¡Vendiste un producto! - Orden ${orderNumber}`,
+        html: `
+          <div style="font-family:sans-serif;max-width:600px;margin:auto;border:1px solid #eee;padding:24px;border-radius:8px;">
+            <h2 style="color:#C05673;">¡Felicidades, ${sellerName}!</h2>
+            <p>Tienes una nueva venta en <strong>MiVitrina</strong>. Por favor prepara el envío del producto lo antes posible.</p>
+
+            <h3 style="margin-top:24px;">Producto(s) vendido(s)</h3>
+            <table style="width:100%;border-collapse:collapse;font-size:0.95em;">
+              <thead>
+                <tr style="background:#f9f9f9;">
+                  <th style="padding:8px;text-align:left;">Producto</th>
+                  <th style="padding:8px;text-align:right;">Tu pago</th>
+                </tr>
+              </thead>
+              <tbody>${productRows}</tbody>
+            </table>
+
+            <h3 style="margin-top:24px;">Datos del comprador para el envío</h3>
+            <table style="width:100%;font-size:0.95em;">
+              <tr><td style="padding:4px;color:#666;">Nombre</td><td style="padding:4px;"><strong>${customerName}</strong></td></tr>
+              <tr><td style="padding:4px;color:#666;">Teléfono</td><td style="padding:4px;">${customerPhone}</td></tr>
+              <tr><td style="padding:4px;color:#666;">Dirección</td><td style="padding:4px;">${customerAddress}</td></tr>
+              <tr><td style="padding:4px;color:#666;">Ciudad</td><td style="padding:4px;">${customerCity}</td></tr>
+            </table>
+
+            <div style="background:#f0fdf4;border-left:4px solid #22c55e;padding:12px 16px;margin-top:24px;border-radius:4px;">
+              <p style="margin:0;color:#15803d;"><strong>Tu pago está en proceso.</strong> El dinero será transferido automáticamente a tu cuenta de MercadoPago en las próximas horas una vez procesado el envío.</p>
+            </div>
+
+            <p style="margin-top:24px;font-size:0.85em;color:#888;">¿Tienes alguna duda? Escríbenos a soporte@mivitrina.shop</p>
+          </div>
+        `,
+      });
+    }
+  } catch (err) {
+    console.error('[EMAIL][SELLER] Error enviando notificación al vendedor:', err);
+    // No interrumpir el flujo principal
+  }
+};
 
 const router = express.Router();
 
@@ -577,6 +679,7 @@ router.post('/webhook', async (req: Request, res: Response) => {
     if (!payoutData.idempotent && payoutData.paidNow) {
       const payoutSummary = await processAutomaticPayoutsForOrder(payoutData.orderId);
       console.info('[MP][PAYOUT] resumen', { orderId: payoutData.orderId, ...payoutSummary });
+      await notifySellerOfSale(payoutData.orderId);
     }
 
     res.json({
@@ -881,6 +984,8 @@ router.put('/:orderNumber/confirm-payment', async (req: Request, res: Response) 
       const payoutSummary = confirmedOrderId
         ? await processAutomaticPayoutsForOrder(confirmedOrderId)
         : { processed: 0, paid: 0, failed: 0, skipped: 0 };
+
+      if (confirmedOrderId) await notifySellerOfSale(confirmedOrderId);
 
       res.json({
         success: true,
